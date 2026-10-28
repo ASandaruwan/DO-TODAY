@@ -46,3 +46,4 @@ router.get('/me/export', exportUserData);
 router.delete('/me', deleteAccount);
 
 module.exports = router;
+

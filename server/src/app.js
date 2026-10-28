@@ -7,6 +7,8 @@ const mongoSanitize = require('express-mongo-sanitize');
 const path = require('path');
 
 const authRoutes = require('./routes/auth.routes');
+const taskRoutes = require('./routes/task.routes');
+const userRoutes = require('./routes/user.routes');
 const { notFound, errorHandler } = require('./middleware/error');
 
 const app = express();
@@ -84,26 +86,8 @@ app.get('/api/health', (req, res) => {
 
 // Mount Routes
 app.use('/api/auth', authRoutes);
-
-// Tasks and Users routes will be registered here (Phase 3)
-// Placeholder loaders for Phase 3:
-app.use('/api/tasks', (req, res, next) => {
-  try {
-    const taskRoutes = require('./routes/task.routes');
-    return taskRoutes(req, res, next);
-  } catch (err) {
-    next();
-  }
-});
-
-app.use('/api/users', (req, res, next) => {
-  try {
-    const userRoutes = require('./routes/user.routes');
-    return userRoutes(req, res, next);
-  } catch (err) {
-    next();
-  }
-});
+app.use('/api/tasks', taskRoutes);
+app.use('/api/users', userRoutes);
 
 // Error handling
 app.use(notFound);

@@ -1,0 +1,17 @@
+{
+  "name": "do-today-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DO-TODAY - Personal Task Manager",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "client": "npm run dev --prefix client",
+    "server": "npm run dev --prefix server",
+    "build": "npm run build --prefix client",
+    "test": "npm test --prefix server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
+

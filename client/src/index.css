@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --primary: #E23E52;
+    --primary-dark: #B8283D;
+    --primary-soft: #FCE8EB;
+    --page-bg-light: #FFF9EC;
+    --surface-light: #FFFDF8;
+    --text-strong: #111827;
+    --text-muted: #6B7280;
+    --border-light: #EDE9DF;
+  }
+
+  body {
+    min-height: 100vh;
+  }
+}
+
+/* Custom gradients matching screenshots */
+.bg-login-gradient {
+  background: radial-gradient(circle at 50% 10%, #201328 0%, #171224 45%, #0F0E18 100%);
+}
+
+.bg-logo-gradient {
+  background: linear-gradient(135deg, #E8455A 0%, #C4293F 100%);
+}
+
+.text-greeting-gradient {
+  background: linear-gradient(90deg, #E23E52 0%, #F4A94E 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.bg-avatar-gradient {
+  background: linear-gradient(135deg, #F59E5B 0%, #E8506A 100%);
+}
+
+/* Custom focus ring */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary;
+}
+

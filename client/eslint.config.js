@@ -14,6 +14,10 @@ export default [
         document: 'readonly',
         localStorage: 'readonly',
         console: 'readonly',
+        CustomEvent: 'readonly',
+        FormData: 'readonly',
+        Blob: 'readonly',
+        alert: 'readonly',
       },
       parserOptions: {
         ecmaVersion: 'latest',
@@ -36,7 +40,7 @@ export default [
       'react/prop-types': 'off',
       'react-refresh/only-export-components': [
         'warn',
-        { allowConstantExport: true },
+        { allowConstantExport: true, allowExportNames: ['useAuth', 'useTasks', 'useTheme'] },
       ],
     },
   },

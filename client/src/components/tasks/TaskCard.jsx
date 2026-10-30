@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Calendar,
   Paperclip,
   CheckCircle2,
   Circle,
-  Clock,
   Edit2,
   Trash2,
   AlertCircle,
@@ -12,7 +11,14 @@ import {
 import { useTasks } from '../../context/TaskContext';
 import { formatDisplayDate } from '../../utils/dateUtils';
 
-export default function TaskCard({ task }) {
+export default function TaskCard({
+  task,
+  isDragging = false,
+  innerRef,
+  draggableProps,
+  dragHandleProps,
+  className = '',
+}) {
   const { openEditTaskModal, deleteTask, updateTaskStatus } = useTasks();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
@@ -58,8 +64,15 @@ export default function TaskCard({ task }) {
 
   return (
     <div
+      ref={innerRef}
+      {...draggableProps}
+      {...dragHandleProps}
       onClick={() => openEditTaskModal(task)}
-      className="group relative bg-surface-light dark:bg-[#1A1D27] rounded-[16px] p-5 border border-border-light dark:border-border-dark shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
+      className={`group relative bg-surface-light dark:bg-[#1A1D27] rounded-[16px] p-5 border transition-all duration-200 cursor-pointer ${
+        isDragging
+          ? 'shadow-2xl border-primary ring-2 ring-primary/40 rotate-[1deg] scale-[1.02] z-50'
+          : 'border-border-light dark:border-border-dark shadow-sm hover:shadow-md'
+      } ${className}`}
     >
       <div className="flex items-start gap-3.5">
         {/* Toggle complete button */}

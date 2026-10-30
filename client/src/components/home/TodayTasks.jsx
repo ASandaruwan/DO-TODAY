@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from 'react';
-import { Plus, ListFilter } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus } from 'lucide-react';
 import { useTasks } from '../../context/TaskContext';
 import TaskCard from '../tasks/TaskCard';
-import { isTaskForDate, formatDisplayDate } from '../../utils/dateUtils';
+import { isTaskForDate } from '../../utils/dateUtils';
 
 const STATUS_TABS = [
   { id: 'all', label: 'All' },
@@ -36,7 +36,7 @@ export default function TodayTasks() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="font-outfit font-bold text-2xl sm:text-[28px] text-content-strong dark:text-white tracking-tight">
-            Today's Tasks
+            Today&apos;s Tasks
           </h2>
         </div>
 

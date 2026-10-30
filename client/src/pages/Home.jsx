@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { ClipboardList, Clock, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTasks } from '../context/TaskContext';
@@ -9,7 +9,14 @@ import { getGreeting, formatHeaderDate } from '../utils/dateUtils';
 
 export default function Home() {
   const { user } = useAuth();
-  const { stats } = useTasks();
+  const { stats, filters, resetFilters } = useTasks();
+
+  // Reset filters if navigating back from Dashboard so calendar & Today's tasks aren't restricted
+  useEffect(() => {
+    if (filters.q || filters.status || filters.priority || filters.from || filters.to) {
+      resetFilters();
+    }
+  }, [filters, resetFilters]);
 
   const greeting = useMemo(() => getGreeting(), []);
   const todayFormatted = useMemo(() => formatHeaderDate(new Date()), []);

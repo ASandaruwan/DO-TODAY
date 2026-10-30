@@ -206,6 +206,54 @@ export const TaskProvider = ({ children }) => {
     }
   };
 
+  // Move Task (used by Kanban Drag & Drop with full optimistic reordering & rollback)
+  const moveTask = async (taskId, sourceStatus, destStatus, sourceIndex, destIndex) => {
+    const previousTasks = [...tasks];
+
+    // Optimistically update
+    setTasks((currentTasks) => {
+      const taskToMove = currentTasks.find((t) => t._id === taskId);
+      if (!taskToMove) return currentTasks;
+
+      const otherTasks = currentTasks.filter((t) => t._id !== taskId);
+      const destTasks = otherTasks.filter((t) => t.status === destStatus);
+      const remainingTasks = otherTasks.filter((t) => t.status !== destStatus);
+
+      const updatedTaskRecord = {
+        ...taskToMove,
+        status: destStatus,
+        order: destIndex,
+      };
+
+      destTasks.splice(destIndex, 0, updatedTaskRecord);
+
+      const reorderedDestTasks = destTasks.map((t, idx) => ({
+        ...t,
+        order: idx,
+      }));
+
+      return [...remainingTasks, ...reorderedDestTasks];
+    });
+
+    try {
+      const response = await api.patch(`/tasks/${taskId}/status`, {
+        status: destStatus,
+        order: destIndex,
+      });
+
+      const updatedTask = response.data?.task || response.data;
+      setTasks((prev) =>
+        prev.map((t) => (t._id === taskId ? { ...t, ...updatedTask } : t))
+      );
+      fetchStats();
+      return { success: true, task: updatedTask };
+    } catch (err) {
+      setTasks(previousTasks);
+      const message = err.response?.data?.message || 'Failed to update task position';
+      return { success: false, error: message };
+    }
+  };
+
   // Delete Task
   const deleteTask = async (id) => {
     const previousTasks = [...tasks];
@@ -262,6 +310,7 @@ export const TaskProvider = ({ children }) => {
     createTask,
     updateTask,
     updateTaskStatus,
+    moveTask,
     deleteTask,
     deleteAttachment,
   };

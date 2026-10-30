@@ -136,7 +136,7 @@ export default function TaskModal() {
       } else {
         setFormError(res.error || 'Failed to remove attachment');
       }
-    } catch (err) {
+    } catch {
       setFormError('Failed to remove attachment');
     }
   };

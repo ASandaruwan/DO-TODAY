@@ -274,3 +274,4 @@ All protected endpoints require an `Authorization: Bearer <jwt_token>` header.
 
 ## 📄 License
 This project is open-source under the [MIT License](LICENSE).
+

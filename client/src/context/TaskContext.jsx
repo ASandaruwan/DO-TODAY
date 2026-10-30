@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../api/axios';
 import { useAuth } from './AuthContext';
+import { toISODateString } from '../utils/dateUtils';
 
 const TaskContext = createContext(null);
 
@@ -28,13 +29,7 @@ export const TaskProvider = ({ children }) => {
   const [filters, setFilters] = useState(initialFilters);
 
   // Date selection for Home calendar & Today's tasks (YYYY-MM-DD)
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  });
+  const [selectedDate, setSelectedDate] = useState(() => toISODateString(new Date()));
 
   // Modal control
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
@@ -64,7 +59,13 @@ export const TaskProvider = ({ children }) => {
     if (!isAuthenticated) return;
     try {
       const response = await api.get('/tasks/stats');
-      setStats(response.data);
+      if (response.data) {
+        setStats({
+          active: response.data.active ?? 0,
+          pendingInProgress: response.data.pendingInProgress ?? 0,
+          completed: response.data.completed ?? 0,
+        });
+      }
     } catch (err) {
       console.error('Failed to fetch stats:', err);
     }
@@ -89,7 +90,10 @@ export const TaskProvider = ({ children }) => {
 
       try {
         const response = await api.get('/tasks', { params });
-        setTasks(response.data);
+        const taskList = Array.isArray(response.data)
+          ? response.data
+          : (response.data?.tasks || []);
+        setTasks(taskList);
       } catch (err) {
         const message = err.response?.data?.message || 'Failed to fetch tasks';
         setError(message);
@@ -111,6 +115,22 @@ export const TaskProvider = ({ children }) => {
     }
   }, [isAuthenticated, fetchTasks, fetchStats]);
 
+  // Derived stats as backup fallback in case server stats is 0 but tasks exist
+  const effectiveStats = useMemo(() => {
+    // If stats are populated from server, use them
+    if (stats.active > 0 || stats.pendingInProgress > 0 || stats.completed > 0) {
+      return stats;
+    }
+    // Otherwise compute from tasks array if available
+    if (tasks && tasks.length > 0) {
+      const active = tasks.filter((t) => t.status !== 'completed').length;
+      const pendingInProgress = tasks.filter((t) => t.status === 'pending' || t.status === 'in-progress').length;
+      const completed = tasks.filter((t) => t.status === 'completed').length;
+      return { active, pendingInProgress, completed };
+    }
+    return stats;
+  }, [stats, tasks]);
+
   // Create Task (supports JSON or FormData with attachments)
   const createTask = async (taskData) => {
     try {
@@ -120,9 +140,10 @@ export const TaskProvider = ({ children }) => {
           : {};
 
       const response = await api.post('/tasks', taskData, config);
-      setTasks((prev) => [response.data, ...prev]);
+      const newTask = response.data?.task || response.data;
+      setTasks((prev) => [newTask, ...prev]);
       fetchStats();
-      return { success: true, task: response.data };
+      return { success: true, task: newTask };
     } catch (err) {
       const message =
         err.response?.data?.message ||
@@ -141,9 +162,10 @@ export const TaskProvider = ({ children }) => {
           : {};
 
       const response = await api.put(`/tasks/${id}`, taskData, config);
-      setTasks((prev) => prev.map((t) => (t._id === id ? response.data : t)));
+      const updatedTask = response.data?.task || response.data;
+      setTasks((prev) => prev.map((t) => (t._id === id ? updatedTask : t)));
       fetchStats();
-      return { success: true, task: response.data };
+      return { success: true, task: updatedTask };
     } catch (err) {
       const message =
         err.response?.data?.message ||
@@ -170,12 +192,12 @@ export const TaskProvider = ({ children }) => {
         order: newOrder,
       });
 
-      // Update with server returned entity
+      const updatedTask = response.data?.task || response.data;
       setTasks((prev) =>
-        prev.map((t) => (t._id === id ? response.data : t))
+        prev.map((t) => (t._id === id ? updatedTask : t))
       );
       fetchStats();
-      return { success: true, task: response.data };
+      return { success: true, task: updatedTask };
     } catch (err) {
       // Rollback to previous state on failure
       setTasks(previousTasks);
@@ -204,10 +226,11 @@ export const TaskProvider = ({ children }) => {
   const deleteAttachment = async (taskId, attachmentId) => {
     try {
       const response = await api.delete(`/tasks/${taskId}/attachments/${attachmentId}`);
+      const updatedTask = response.data?.task || response.data;
       setTasks((prev) =>
-        prev.map((t) => (t._id === taskId ? response.data : t))
+        prev.map((t) => (t._id === taskId ? updatedTask : t))
       );
-      return { success: true, task: response.data };
+      return { success: true, task: updatedTask };
     } catch (err) {
       const message = err.response?.data?.message || 'Failed to remove attachment';
       return { success: false, error: message };
@@ -220,7 +243,7 @@ export const TaskProvider = ({ children }) => {
 
   const value = {
     tasks,
-    stats,
+    stats: effectiveStats,
     loading,
     error,
     filters,

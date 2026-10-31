@@ -1,31 +1,22 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { useTasks } from '../context/TaskContext';
+import { useToast } from '../context/ToastContext';
 import ViewSwitcher from '../components/dashboard/ViewSwitcher';
 import DashboardFilters from '../components/dashboard/DashboardFilters';
 import KanbanBoard from '../components/kanban/KanbanBoard';
 import TaskList from '../components/list/TaskList';
 import TimelineView from '../components/timeline/TimelineView';
-import Toast from '../components/ui/Toast';
 
 export default function Dashboard() {
   const { openNewTaskModal } = useTasks();
+  const { showToast } = useToast();
 
   // Selected view persisted in localStorage (default: 'kanban' matching 02-dashboard-kanban.png)
   const [activeView, setActiveView] = useState(() => {
     const saved = localStorage.getItem('dt_view');
     return ['list', 'kanban', 'timeline'].includes(saved) ? saved : 'kanban';
   });
-
-  const [toast, setToast] = useState({ message: '', type: 'info' });
-
-  const showToast = useCallback((message, type = 'info') => {
-    setToast({ message, type });
-  }, []);
-
-  const hideToast = useCallback(() => {
-    setToast({ message: '', type: 'info' });
-  }, []);
 
   const handleViewChange = (viewId) => {
     setActiveView(viewId);
@@ -71,15 +62,6 @@ export default function Dashboard() {
         {activeView === 'list' && <TaskList onShowToast={showToast} />}
         {activeView === 'timeline' && <TimelineView onShowToast={showToast} />}
       </div>
-
-      {/* Toast notifications */}
-      {toast.message && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={hideToast}
-        />
-      )}
     </div>
   );
 }

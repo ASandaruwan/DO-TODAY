@@ -77,6 +77,8 @@ export default function TaskList({ onShowToast }) {
     setDeletingId(null);
     if (!res?.success) {
       onShowToast?.(res?.error || 'Failed to delete task', 'error');
+    } else {
+      onShowToast?.('Task deleted successfully', 'success');
     }
   };
 

@@ -9,6 +9,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useTasks } from '../../context/TaskContext';
+import { useToast } from '../../context/ToastContext';
 import { formatDisplayDate } from '../../utils/dateUtils';
 
 export default function TaskCard({
@@ -20,6 +21,7 @@ export default function TaskCard({
   className = '',
 }) {
   const { openEditTaskModal, deleteTask, updateTaskStatus } = useTasks();
+  const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
@@ -34,7 +36,12 @@ export default function TaskCard({
   const handleDelete = async (e) => {
     e.stopPropagation();
     setIsDeleting(true);
-    await deleteTask(task._id);
+    const res = await deleteTask(task._id);
+    if (res?.success) {
+      toast.success('Task deleted successfully');
+    } else {
+      toast.error(res?.error || 'Failed to delete task');
+    }
     setIsDeleting(false);
   };
 

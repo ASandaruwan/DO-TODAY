@@ -10,6 +10,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useTasks } from '../../context/TaskContext';
+import { useToast } from '../../context/ToastContext';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const MAX_FILES = 5;
@@ -34,6 +35,7 @@ export default function TaskModal() {
     deleteAttachment,
   } = useTasks();
 
+  const { toast } = useToast();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('pending');
@@ -133,6 +135,7 @@ export default function TaskModal() {
       const res = await deleteAttachment(editingTask._id, attachmentId);
       if (res.success) {
         setExistingAttachments((prev) => prev.filter((a) => a._id !== attachmentId));
+        toast.info('Attachment removed');
       } else {
         setFormError(res.error || 'Failed to remove attachment');
       }
@@ -187,6 +190,7 @@ export default function TaskModal() {
     setSubmitting(false);
 
     if (result.success) {
+      toast.success(editingTask ? 'Task updated successfully!' : 'Task created successfully!');
       closeNewTaskModal();
     } else {
       setFormError(result.error || 'Failed to save task');

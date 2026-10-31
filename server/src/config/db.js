@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { seedDevData } = require('../utils/seed');
 
 let mongod = null;
 
@@ -30,6 +31,11 @@ const connectDB = async () => {
       throw err;
     }
   }
+
+  // Seed default demo user and sample tasks in development if database is empty
+  if (process.env.NODE_ENV === 'development') {
+    await seedDevData();
+  }
 };
 
 const closeDB = async () => {
@@ -40,4 +46,3 @@ const closeDB = async () => {
 };
 
 module.exports = { connectDB, closeDB };
-

@@ -7,11 +7,7 @@ import {
   Download,
   Palette,
   Layers,
-  Server,
-  Code2,
-  CheckCircle2,
   ArrowRight,
-  ExternalLink,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -65,25 +61,6 @@ export default function About() {
       icon: Layers,
       color: 'text-rose-500 bg-rose-50 dark:bg-rose-950/40',
     },
-  ];
-
-  const frontendStack = [
-    { name: 'React 19', role: 'Modern UI library with concurrent rendering' },
-    { name: 'Tailwind CSS v3', role: 'Utility-first styling with custom tokens' },
-    { name: 'React Router v7', role: 'Client-side routing and protected boundaries' },
-    { name: '@hello-pangea/dnd', role: 'Accessible and fluid drag-and-drop mechanics' },
-    { name: 'Lucide React', role: 'Consistent, modern icon system' },
-    { name: 'Outfit & Inter Fonts', role: 'Geometric headings and high-legibility body' },
-    { name: 'Axios', role: 'HTTP client with JWT request/response interceptors' },
-  ];
-
-  const backendStack = [
-    { name: 'Node.js & Express', role: 'High-throughput RESTful API server' },
-    { name: 'MongoDB & Mongoose', role: 'Document database with user-scoped indexes' },
-    { name: 'JWT & Bcryptjs', role: 'Stateless auth and strong password hashing' },
-    { name: 'Multer & Cloudinary', role: 'File upload processing and storage' },
-    { name: 'Helmet & Rate Limit', role: 'HTTP security headers and brute-force protection' },
-    { name: 'Morgan & Validator', role: 'Request logging and strict input validation' },
   ];
 
   return (
@@ -165,99 +142,6 @@ export default function About() {
               </div>
             );
           })}
-        </div>
-      </div>
-
-      {/* Tech Stack & Architecture */}
-      <div className="space-y-6">
-        <div>
-          <h2 className="font-outfit font-bold text-2xl sm:text-3xl text-content-strong dark:text-white tracking-tight">
-            Tech Stack & Architecture
-          </h2>
-          <p className="text-content-muted dark:text-gray-400 text-sm sm:text-base mt-0.5">
-            Built with a modern full-stack JavaScript architecture following modular MVC conventions.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Frontend Stack */}
-          <div className="bg-surface-light dark:bg-[#1A1D27] p-6 sm:p-7 rounded-card border border-border-light dark:border-border-dark shadow-card">
-            <div className="flex items-center gap-2.5 mb-4">
-              <Code2 className="w-5 h-5 text-primary" />
-              <h3 className="font-outfit font-bold text-xl text-content-strong dark:text-white">
-                Frontend Architecture
-              </h3>
-            </div>
-
-            <div className="space-y-3">
-              {frontendStack.map((item) => (
-                <div
-                  key={item.name}
-                  className="flex items-start justify-between gap-3 text-xs sm:text-sm py-1.5 border-b border-border-light/60 dark:border-border-dark/60 last:border-b-0"
-                >
-                  <span className="font-semibold text-content-strong dark:text-gray-200 flex-shrink-0">
-                    {item.name}
-                  </span>
-                  <span className="text-content-muted dark:text-gray-400 text-right">
-                    {item.role}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Backend Stack */}
-          <div className="bg-surface-light dark:bg-[#1A1D27] p-6 sm:p-7 rounded-card border border-border-light dark:border-border-dark shadow-card">
-            <div className="flex items-center gap-2.5 mb-4">
-              <Server className="w-5 h-5 text-primary" />
-              <h3 className="font-outfit font-bold text-xl text-content-strong dark:text-white">
-                Backend Architecture
-              </h3>
-            </div>
-
-            <div className="space-y-3">
-              {backendStack.map((item) => (
-                <div
-                  key={item.name}
-                  className="flex items-start justify-between gap-3 text-xs sm:text-sm py-1.5 border-b border-border-light/60 dark:border-border-dark/60 last:border-b-0"
-                >
-                  <span className="font-semibold text-content-strong dark:text-gray-200 flex-shrink-0">
-                    {item.name}
-                  </span>
-                  <span className="text-content-muted dark:text-gray-400 text-right">
-                    {item.role}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Engineering Highlights */}
-        <div className="bg-surface-light dark:bg-[#1A1D27] p-6 sm:p-8 rounded-card border border-border-light dark:border-border-dark shadow-card">
-          <h3 className="font-outfit font-bold text-lg text-content-strong dark:text-white mb-4">
-            Key Engineering Highlights
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs sm:text-sm">
-            <div className="p-4 rounded-xl bg-white dark:bg-[#13151F] border border-border-light dark:border-border-dark">
-              <span className="font-bold text-primary block mb-1">Scoped Security</span>
-              <p className="text-content-muted dark:text-gray-400">
-                All task queries are strictly bound to the authenticated user ID on the server, guaranteeing tenant isolation.
-              </p>
-            </div>
-            <div className="p-4 rounded-xl bg-white dark:bg-[#13151F] border border-border-light dark:border-border-dark">
-              <span className="font-bold text-primary block mb-1">Optimistic UI</span>
-              <p className="text-content-muted dark:text-gray-400">
-                Kanban card dragging updates instantly with seamless rollback handling if a network request fails.
-              </p>
-            </div>
-            <div className="p-4 rounded-xl bg-white dark:bg-[#13151F] border border-border-light dark:border-border-dark">
-              <span className="font-bold text-primary block mb-1">Universal Dark Mode</span>
-              <p className="text-content-muted dark:text-gray-400">
-                Zero styling compromises: bespoke color palettes for both light cream and deep slate dark modes.
-              </p>
-            </div>
-          </div>
         </div>
       </div>
     </div>

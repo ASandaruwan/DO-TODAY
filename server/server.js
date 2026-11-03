@@ -5,7 +5,7 @@ const path = require('path');
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 const app = require('./src/app');
-const { connectDB } = require('./src/config/db');
+const { connectDB, closeDB } = require('./src/config/db');
 
 const PORT = process.env.PORT || 5000;
 
@@ -17,13 +17,22 @@ const startServer = async () => {
       console.log(`[DO-TODAY Server] Running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
     });
 
-    // Graceful shutdown
-    process.on('SIGTERM', () => {
-      console.log('SIGTERM signal received: closing HTTP server');
-      server.close(() => {
-        console.log('HTTP server closed');
+    // Graceful shutdown on SIGINT (Ctrl+C) and SIGTERM
+    const handleShutdown = (signal) => {
+      console.log(`\n[DO-TODAY Server] ${signal} signal received: closing server & saving database...`);
+      server.close(async () => {
+        try {
+          await closeDB();
+          console.log('[DO-TODAY Server] Database flushed and cleanly stopped.');
+        } catch (closeErr) {
+          console.error('[DO-TODAY Server] Error during shutdown:', closeErr.message);
+        }
+        process.exit(0);
       });
-    });
+    };
+
+    process.on('SIGINT', () => handleShutdown('SIGINT'));
+    process.on('SIGTERM', () => handleShutdown('SIGTERM'));
   } catch (err) {
     console.error(`[Server Start Error]: ${err.message}`);
     process.exit(1);
@@ -31,4 +40,3 @@ const startServer = async () => {
 };
 
 startServer();
-

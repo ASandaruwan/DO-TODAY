@@ -159,7 +159,7 @@ To ensure fidelity while recreating screens and flows not depicted in the refere
 4. **Design of Non-Screenshot Screens**:
    - **Profile (`/profile`)**: Minimal, centered layout matching the warm card aesthetic. Features a live avatar preview that updates dynamically as the user types their name, a read-only permanent username field, account join date, and a change password form with validation indicators.
    - **Settings (`/settings`)**: Provides visual theme preview tiles (Light cream vs. Slate dark), a one-click JSON backup export card, and a Danger Zone account deletion dialog requiring exact username confirmation.
-   - **About (`/about`)**: Comprehensive product overview, feature cards, and complete frontend/backend technology stack matrices.
+   - **About (`/about`)**: Product overview and core feature highlights tailored for users without technical clutter.
    - **List View**: Dense, accessible table layout featuring sortable columns, inline check buttons to toggle task completion, priority badges, and quick edit/delete actions.
    - **Timeline View**: Lightweight Gantt-style schedule implemented entirely in CSS grid and SVG without heavy third-party chart libraries. Spans the active month, highlights weekends, and renders a vertical "Today" indicator line.
 
@@ -271,7 +271,7 @@ DO-TODAY/
 │       │   ├── Dashboard.jsx          # Multi-view dashboard matching 02-dashboard-kanban.png
 │       │   ├── Profile.jsx            # Profile editor with live avatar preview
 │       │   ├── Settings.jsx           # Theme switcher, JSON export, account deletion
-│       │   └── About.jsx              # Application overview and architecture details
+│       │   └── About.jsx              # Application overview and core feature highlights
 │       └── utils/
 │           └── dateUtils.js           # Greeting, calendar matrices, date formatters
 └── server/                            # Backend REST API (Node.js + Express)

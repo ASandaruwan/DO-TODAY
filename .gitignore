@@ -37,3 +37,8 @@ uploads/
 server/uploads/
 !server/uploads/.gitkeep
 
+# Local database storage (persistent dev fallback)
+.mongo_data/
+server/.mongo_data/
+
+

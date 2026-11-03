@@ -190,10 +190,6 @@ export default function Profile() {
               <Calendar className="w-4 h-4 text-primary" />
               <span>Joined {formattedJoinedDate}</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <User className="w-4 h-4 text-primary" />
-              <span>Theme: <strong className="capitalize text-content-strong dark:text-gray-200">{user?.theme || 'Light'}</strong></span>
-            </div>
           </div>
         </div>
       </div>

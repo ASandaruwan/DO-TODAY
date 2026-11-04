@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../api/axios';
@@ -44,9 +44,23 @@ export default function Profile() {
 
   const hasNameChanged = fullName.trim() !== (user?.fullName || '').trim();
 
+  // Refresh user data if createdAt is missing from an older cached session
+  useEffect(() => {
+    if (user && !user.createdAt) {
+      api
+        .get('/auth/me')
+        .then((response) => {
+          if (response.data?.user) {
+            updateUser(response.data.user);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user, updateUser]);
+
   // Joined date formatted
   const formattedJoinedDate = useMemo(() => {
-    if (!user?.createdAt) return 'Recent Member';
+    if (!user?.createdAt) return 'recently';
     try {
       return new Date(user.createdAt).toLocaleDateString('en-US', {
         month: 'short',
@@ -54,7 +68,7 @@ export default function Profile() {
         year: 'numeric',
       });
     } catch {
-      return 'Active Member';
+      return 'recently';
     }
   }, [user]);
 

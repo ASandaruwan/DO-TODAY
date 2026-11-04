@@ -30,18 +30,20 @@ export default function DashboardFilters() {
     setFilters((prev) => ({ ...prev, priority: e.target.value }));
   };
 
-  const handleFromDateChange = (e) => {
-    setFilters((prev) => ({ ...prev, from: e.target.value }));
-  };
-
-  const handleToDateChange = (e) => {
-    setFilters((prev) => ({ ...prev, to: e.target.value }));
+  const handleDateChange = (e) => {
+    setFilters((prev) => ({
+      ...prev,
+      date: e.target.value,
+      from: '',
+      to: '',
+    }));
   };
 
   const hasActiveFilters = Boolean(
     (filters.q && filters.q.trim()) ||
     filters.status ||
     filters.priority ||
+    filters.date ||
     filters.from ||
     filters.to
   );
@@ -75,8 +77,8 @@ export default function DashboardFilters() {
         )}
       </div>
 
-      {/* 5 Form Controls in 1 Row (wrapping responsively) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 lg:gap-5">
+      {/* 4 Form Controls in 1 Row (wrapping responsively) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
         {/* 1. Search tasks... with leading search icon */}
         <div className="relative">
           <Search className="w-4 h-4 text-content-muted dark:text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -130,24 +132,14 @@ export default function DashboardFilters() {
           </div>
         </div>
 
-        {/* 4. Date input - From */}
+        {/* 4. Single Date input */}
         <div className="relative">
           <input
             type="date"
-            value={filters.from || ''}
-            onChange={handleFromDateChange}
-            aria-label="Filter by from date"
-            className={`${inputBaseStyle} dark:[color-scheme:dark] cursor-pointer`}
-          />
-        </div>
-
-        {/* 5. Date input - To */}
-        <div className="relative">
-          <input
-            type="date"
-            value={filters.to || ''}
-            onChange={handleToDateChange}
-            aria-label="Filter by to date"
+            value={filters.date || filters.from || ''}
+            onChange={handleDateChange}
+            aria-label="Filter by date"
+            title="Filter by date"
             className={`${inputBaseStyle} dark:[color-scheme:dark] cursor-pointer`}
           />
         </div>

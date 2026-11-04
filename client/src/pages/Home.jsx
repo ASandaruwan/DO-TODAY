@@ -13,7 +13,7 @@ export default function Home() {
 
   // Reset filters if navigating back from Dashboard so calendar & Today's tasks aren't restricted
   useEffect(() => {
-    if (filters.q || filters.status || filters.priority || filters.from || filters.to) {
+    if (filters.q || filters.status || filters.priority || filters.from || filters.to || filters.date) {
       resetFilters();
     }
   }, [filters, resetFilters]);

@@ -49,6 +49,7 @@ const signup = async (req, res, next) => {
         fullName: user.fullName,
         username: user.username,
         theme: user.theme,
+        createdAt: user.createdAt,
       },
     });
   } catch (err) {
@@ -83,6 +84,7 @@ const login = async (req, res, next) => {
         fullName: user.fullName,
         username: user.username,
         theme: user.theme,
+        createdAt: user.createdAt,
       },
     });
   } catch (err) {
@@ -100,6 +102,7 @@ const getMe = async (req, res) => {
       fullName: req.user.fullName,
       username: req.user.username,
       theme: req.user.theme,
+      createdAt: req.user.createdAt,
     },
   });
 };

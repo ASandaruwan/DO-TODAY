@@ -29,9 +29,11 @@ const updateProfile = async (req, res, next) => {
       success: true,
       user: {
         id: user._id,
+        _id: user._id,
         fullName: user.fullName,
         username: user.username,
         theme: user.theme,
+        createdAt: user.createdAt,
       },
     });
   } catch (err) {
@@ -164,4 +166,3 @@ module.exports = {
   exportUserData,
   deleteAccount,
 };
-

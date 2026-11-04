@@ -9,6 +9,7 @@ const initialFilters = {
   q: '',
   status: '',
   priority: '',
+  date: '',
   from: '',
   to: '',
 };

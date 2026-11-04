@@ -8,21 +8,22 @@ import {
   Paperclip,
   Trash2,
   ExternalLink,
+  Eye,
+  Download,
 } from 'lucide-react';
 import { useTasks } from '../../context/TaskContext';
 import { useToast } from '../../context/ToastContext';
+import {
+  getAttachmentUrl,
+  isImageAttachment,
+  isPdfAttachment,
+  formatFileSize,
+} from '../../utils/attachmentUtils';
+import AttachmentPreviewModal from '../common/AttachmentPreviewModal';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const MAX_FILES = 5;
 const ALLOWED_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
-
-function formatFileSize(bytes) {
-  if (!bytes || bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
-}
 
 export default function TaskModal() {
   const {
@@ -44,6 +45,7 @@ export default function TaskModal() {
   const [dueDate, setDueDate] = useState('');
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [existingAttachments, setExistingAttachments] = useState([]);
+  const [previewAttachment, setPreviewAttachment] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
@@ -130,11 +132,14 @@ export default function TaskModal() {
   };
 
   const handleDeleteExistingAttachment = async (attachmentId) => {
-    if (!editingTask) return;
+    const taskId = editingTask?._id || editingTask?.id;
+    if (!taskId) return;
     try {
-      const res = await deleteAttachment(editingTask._id, attachmentId);
+      const res = await deleteAttachment(taskId, attachmentId);
       if (res.success) {
-        setExistingAttachments((prev) => prev.filter((a) => a._id !== attachmentId));
+        setExistingAttachments((prev) =>
+          prev.filter((a) => a._id !== attachmentId && a.id !== attachmentId)
+        );
         toast.info('Attachment removed');
       } else {
         setFormError(res.error || 'Failed to remove attachment');
@@ -162,8 +167,8 @@ export default function TaskModal() {
       formData.append('description', description.trim());
       formData.append('status', status);
       formData.append('priority', priority);
-      if (startDate) formData.append('startDate', startDate);
-      if (dueDate) formData.append('dueDate', dueDate);
+      formData.append('startDate', startDate || '');
+      formData.append('dueDate', dueDate || '');
 
       selectedFiles.forEach((file) => {
         formData.append('attachments', file);
@@ -182,7 +187,8 @@ export default function TaskModal() {
 
     let result;
     if (editingTask) {
-      result = await updateTask(editingTask._id, payload);
+      const taskId = editingTask._id || editingTask.id;
+      result = await updateTask(taskId, payload);
     } else {
       result = await createTask(payload);
     }
@@ -332,51 +338,86 @@ export default function TaskModal() {
             {existingAttachments.length > 0 && (
               <div className="space-y-1.5 mb-2">
                 <span className="text-xs font-medium text-content-muted dark:text-gray-400">
-                  Current files:
+                  Current files ({existingAttachments.length}):
                 </span>
-                <div className="space-y-1">
-                  {existingAttachments.map((att) => (
-                    <div
-                      key={att._id}
-                      className="flex items-center justify-between p-2 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-border-light dark:border-border-dark text-xs"
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        {att.mimeType?.startsWith('image/') ? (
-                          <ImageIcon className="w-4 h-4 text-primary flex-shrink-0" />
-                        ) : (
-                          <FileText className="w-4 h-4 text-primary flex-shrink-0" />
-                        )}
-                        <span className="truncate font-medium text-content-strong dark:text-white">
-                          {att.filename}
-                        </span>
-                        <span className="text-content-muted text-[11px]">
-                          ({formatFileSize(att.size)})
-                        </span>
-                      </div>
+                <div className="space-y-1.5">
+                  {existingAttachments.map((att) => {
+                    const attId = att._id || att.id;
+                    const isImg = isImageAttachment(att);
+                    const fullUrl = getAttachmentUrl(att.url);
 
-                      <div className="flex items-center gap-1.5">
-                        {att.url && (
-                          <a
-                            href={att.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1 text-content-muted hover:text-primary transition-colors"
-                            title="Open attachment"
+                    return (
+                      <div
+                        key={attId}
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-border-light dark:border-border-dark text-xs gap-2"
+                      >
+                        <div className="flex items-center gap-2.5 truncate flex-1 min-w-0">
+                          {isImg ? (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewAttachment(att)}
+                              className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 border border-border-light dark:border-border-dark hover:opacity-80 transition-opacity bg-black/5"
+                              title="Click to preview image"
+                            >
+                              <img
+                                src={fullUrl}
+                                alt={att.filename}
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                              />
+                            </button>
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-red-50 dark:bg-red-950/40 text-primary border border-red-100 dark:border-red-900/30">
+                              <FileText className="w-5 h-5" />
+                            </div>
+                          )}
+
+                          <div className="truncate min-w-0 flex-1">
+                            <p className="truncate font-medium text-content-strong dark:text-white">
+                              {att.filename}
+                            </p>
+                            <p className="text-content-muted text-[11px]">
+                              {formatFileSize(att.size)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {att.url && (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewAttachment(att)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary-soft dark:bg-primary/20 text-primary hover:bg-primary hover:text-white transition-colors font-medium text-[11px]"
+                              title="Preview attachment"
+                            >
+                              <Eye className="w-3 h-3" />
+                              <span>View</span>
+                            </button>
+                          )}
+                          {att.url && (
+                            <a
+                              href={fullUrl}
+                              download={att.filename}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 text-content-muted hover:text-content-strong dark:hover:text-white transition-colors rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700"
+                              title="Download file"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteExistingAttachment(attId)}
+                            className="p-1.5 text-content-muted hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30"
+                            title="Remove attachment"
                           >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteExistingAttachment(att._id)}
-                          className="p-1 text-content-muted hover:text-red-500 transition-colors"
-                          title="Remove attachment"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -468,6 +509,14 @@ export default function TaskModal() {
           </div>
         </form>
       </div>
+
+      {/* Lightbox / Attachment Preview Modal */}
+      {previewAttachment && (
+        <AttachmentPreviewModal
+          attachment={previewAttachment}
+          onClose={() => setPreviewAttachment(null)}
+        />
+      )}
     </div>
   );
 }

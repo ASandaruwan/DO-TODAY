@@ -13,6 +13,25 @@ const initialFilters = {
   to: '',
 };
 
+// Normalizes tasks to ensure both _id and id are always present
+const normalizeTask = (t) => {
+  if (!t) return t;
+  const id = t._id || t.id;
+  const attachments = Array.isArray(t.attachments)
+    ? t.attachments.map((a) => ({
+        ...a,
+        _id: a._id || a.id,
+        id: a.id || a._id,
+      }))
+    : [];
+  return {
+    ...t,
+    _id: id,
+    id: id,
+    attachments,
+  };
+};
+
 export const TaskProvider = ({ children }) => {
   const { isAuthenticated } = useAuth();
 
@@ -93,7 +112,7 @@ export const TaskProvider = ({ children }) => {
         const taskList = Array.isArray(response.data)
           ? response.data
           : (response.data?.tasks || []);
-        setTasks(taskList);
+        setTasks(taskList.map(normalizeTask));
       } catch (err) {
         const message = err.response?.data?.message || 'Failed to fetch tasks';
         setError(message);
@@ -140,7 +159,7 @@ export const TaskProvider = ({ children }) => {
           : {};
 
       const response = await api.post('/tasks', taskData, config);
-      const newTask = response.data?.task || response.data;
+      const newTask = normalizeTask(response.data?.task || response.data);
       setTasks((prev) => [newTask, ...prev]);
       fetchStats();
       return { success: true, task: newTask };
@@ -155,15 +174,21 @@ export const TaskProvider = ({ children }) => {
 
   // Update Task
   const updateTask = async (id, taskData) => {
+    const targetId = id || taskData?._id || taskData?.id;
+    if (!targetId) {
+      return { success: false, error: 'Task ID is missing' };
+    }
     try {
       const config =
         taskData instanceof FormData
           ? { headers: { 'Content-Type': 'multipart/form-data' } }
           : {};
 
-      const response = await api.put(`/tasks/${id}`, taskData, config);
-      const updatedTask = response.data?.task || response.data;
-      setTasks((prev) => prev.map((t) => (t._id === id ? updatedTask : t)));
+      const response = await api.put(`/tasks/${targetId}`, taskData, config);
+      const updatedTask = normalizeTask(response.data?.task || response.data);
+      setTasks((prev) =>
+        prev.map((t) => (t._id === targetId || t.id === targetId ? updatedTask : t))
+      );
       fetchStats();
       return { success: true, task: updatedTask };
     } catch (err) {
@@ -177,12 +202,15 @@ export const TaskProvider = ({ children }) => {
 
   // Optimistic status update (used by Drag & Drop in Kanban & list toggle)
   const updateTaskStatus = async (id, newStatus, newOrder = 0) => {
+    if (!id) {
+      return { success: false, error: 'Task ID is missing' };
+    }
     const previousTasks = [...tasks];
 
     // Optimistically update local state
     setTasks((prev) =>
       prev.map((t) =>
-        t._id === id ? { ...t, status: newStatus, order: newOrder } : t
+        t._id === id || t.id === id ? { ...t, status: newStatus, order: newOrder } : t
       )
     );
 
@@ -192,9 +220,9 @@ export const TaskProvider = ({ children }) => {
         order: newOrder,
       });
 
-      const updatedTask = response.data?.task || response.data;
+      const updatedTask = normalizeTask(response.data?.task || response.data);
       setTasks((prev) =>
-        prev.map((t) => (t._id === id ? updatedTask : t))
+        prev.map((t) => (t._id === id || t.id === id ? updatedTask : t))
       );
       fetchStats();
       return { success: true, task: updatedTask };
@@ -208,14 +236,17 @@ export const TaskProvider = ({ children }) => {
 
   // Move Task (used by Kanban Drag & Drop with full optimistic reordering & rollback)
   const moveTask = async (taskId, sourceStatus, destStatus, sourceIndex, destIndex) => {
+    if (!taskId) {
+      return { success: false, error: 'Task ID is missing' };
+    }
     const previousTasks = [...tasks];
 
     // Optimistically update
     setTasks((currentTasks) => {
-      const taskToMove = currentTasks.find((t) => t._id === taskId);
+      const taskToMove = currentTasks.find((t) => t._id === taskId || t.id === taskId);
       if (!taskToMove) return currentTasks;
 
-      const otherTasks = currentTasks.filter((t) => t._id !== taskId);
+      const otherTasks = currentTasks.filter((t) => t._id !== taskId && t.id !== taskId);
       const destTasks = otherTasks.filter((t) => t.status === destStatus);
       const remainingTasks = otherTasks.filter((t) => t.status !== destStatus);
 
@@ -241,9 +272,9 @@ export const TaskProvider = ({ children }) => {
         order: destIndex,
       });
 
-      const updatedTask = response.data?.task || response.data;
+      const updatedTask = normalizeTask(response.data?.task || response.data);
       setTasks((prev) =>
-        prev.map((t) => (t._id === taskId ? { ...t, ...updatedTask } : t))
+        prev.map((t) => (t._id === taskId || t.id === taskId ? { ...t, ...updatedTask } : t))
       );
       fetchStats();
       return { success: true, task: updatedTask };
@@ -256,8 +287,11 @@ export const TaskProvider = ({ children }) => {
 
   // Delete Task
   const deleteTask = async (id) => {
+    if (!id) {
+      return { success: false, error: 'Task ID is missing' };
+    }
     const previousTasks = [...tasks];
-    setTasks((prev) => prev.filter((t) => t._id !== id));
+    setTasks((prev) => prev.filter((t) => t._id !== id && t.id !== id));
 
     try {
       await api.delete(`/tasks/${id}`);
@@ -272,11 +306,14 @@ export const TaskProvider = ({ children }) => {
 
   // Delete Attachment
   const deleteAttachment = async (taskId, attachmentId) => {
+    if (!taskId || !attachmentId) {
+      return { success: false, error: 'Task ID or Attachment ID is missing' };
+    }
     try {
       const response = await api.delete(`/tasks/${taskId}/attachments/${attachmentId}`);
-      const updatedTask = response.data?.task || response.data;
+      const updatedTask = normalizeTask(response.data?.task || response.data);
       setTasks((prev) =>
-        prev.map((t) => (t._id === taskId ? updatedTask : t))
+        prev.map((t) => (t._id === taskId || t.id === taskId ? updatedTask : t))
       );
       return { success: true, task: updatedTask };
     } catch (err) {

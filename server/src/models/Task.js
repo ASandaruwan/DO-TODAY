@@ -65,10 +65,25 @@ taskSchema.index({ user: 1, dueDate: 1 });
 taskSchema.index({ user: 1, priority: 1 });
 taskSchema.index({ title: 'text', description: 'text' });
 
+attachmentSchema.set('toJSON', {
+  transform: (doc, ret) => {
+    ret.id = ret._id;
+    return ret;
+  },
+});
+
 taskSchema.set('toJSON', {
   transform: (doc, ret) => {
     ret.id = ret._id;
-    delete ret._id;
+    // Retain ret._id so both client-side conventions (_id and id) work seamlessly
+    delete ret.__v;
+    return ret;
+  },
+});
+
+taskSchema.set('toObject', {
+  transform: (doc, ret) => {
+    ret.id = ret._id;
     delete ret.__v;
     return ret;
   },

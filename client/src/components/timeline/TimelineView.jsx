@@ -247,7 +247,7 @@ export default function TimelineView() {
           <div className="divide-y divide-border-light/60 dark:divide-border-dark/60">
             {taskTimelineData.map(({ task }) => (
               <div
-                key={task._id}
+                key={task._id || task.id}
                 onClick={() => openEditTaskModal(task)}
                 className="h-[54px] px-5 flex items-center justify-between gap-3 hover:bg-[#FAF9F5] dark:hover:bg-[#1F2330]/50 cursor-pointer transition-colors"
                 title={`Click to edit: ${task.title}`}
@@ -324,7 +324,7 @@ export default function TimelineView() {
 
                 return (
                   <div
-                    key={task._id}
+                    key={task._id || task.id}
                     className="h-[54px] relative flex items-center hover:bg-[#FAF9F5] dark:hover:bg-[#1F2330]/30 transition-colors"
                   >
                     {/* Day background grid cells */}

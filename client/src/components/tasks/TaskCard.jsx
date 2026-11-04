@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Calendar,
   Paperclip,
@@ -7,10 +7,20 @@ import {
   Edit2,
   Trash2,
   AlertCircle,
+  Eye,
+  Download,
+  FileText,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { useTasks } from '../../context/TaskContext';
 import { useToast } from '../../context/ToastContext';
 import { formatDisplayDate } from '../../utils/dateUtils';
+import {
+  getAttachmentUrl,
+  isImageAttachment,
+  formatFileSize,
+} from '../../utils/attachmentUtils';
+import AttachmentPreviewModal from '../common/AttachmentPreviewModal';
 
 export default function TaskCard({
   task,
@@ -24,19 +34,35 @@ export default function TaskCard({
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [showAttachmentsMenu, setShowAttachmentsMenu] = useState(false);
+  const [previewAttachment, setPreviewAttachment] = useState(null);
+  const attachmentsRef = useRef(null);
 
-  const isCompleted = task.status === 'completed';
+  const taskId = task?._id || task?.id;
+  const isCompleted = task?.status === 'completed';
+
+  // Close attachments menu when clicking outside
+  useEffect(() => {
+    if (!showAttachmentsMenu) return;
+    const handleClickOutside = (e) => {
+      if (attachmentsRef.current && !attachmentsRef.current.contains(e.target)) {
+        setShowAttachmentsMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showAttachmentsMenu]);
 
   const handleToggleComplete = async (e) => {
     e.stopPropagation();
     const newStatus = isCompleted ? 'pending' : 'completed';
-    await updateTaskStatus(task._id, newStatus, task.order || 0);
+    await updateTaskStatus(taskId, newStatus, task.order || 0);
   };
 
   const handleDelete = async (e) => {
     e.stopPropagation();
     setIsDeleting(true);
-    const res = await deleteTask(task._id);
+    const res = await deleteTask(taskId);
     if (res?.success) {
       toast.success('Task deleted successfully');
     } else {
@@ -68,6 +94,9 @@ export default function TaskCard({
     medium: 'Medium',
     high: 'High',
   };
+
+  const attachments = Array.isArray(task?.attachments) ? task.attachments : [];
+  const imageAttachments = attachments.filter(isImageAttachment);
 
   return (
     <div
@@ -141,6 +170,42 @@ export default function TaskCard({
             </p>
           )}
 
+          {/* Attached Images Thumbnail Bar */}
+          {imageAttachments.length > 0 && (
+            <div className="mt-2.5 flex items-center gap-2 overflow-x-auto py-1">
+              {imageAttachments.slice(0, 3).map((att, idx) => {
+                const url = getAttachmentUrl(att.url);
+                return (
+                  <button
+                    key={att._id || att.id || idx}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPreviewAttachment(att);
+                    }}
+                    className="relative group/thumb w-14 h-14 rounded-xl overflow-hidden border border-border-light dark:border-border-dark flex-shrink-0 bg-black/5 hover:ring-2 hover:ring-primary transition-all"
+                    title={`View ${att.filename}`}
+                  >
+                    <img
+                      src={url}
+                      alt={att.filename}
+                      className="w-full h-full object-cover group-hover/thumb:scale-105 transition-transform"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center">
+                      <Eye className="w-4 h-4 text-white" />
+                    </div>
+                  </button>
+                );
+              })}
+              {imageAttachments.length > 3 && (
+                <span className="text-xs font-semibold text-content-muted">
+                  +{imageAttachments.length - 3} more
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Badges & Meta Row */}
           <div className="mt-3.5 flex flex-wrap items-center gap-2 text-xs">
             {/* Priority Badge */}
@@ -169,12 +234,85 @@ export default function TaskCard({
               </span>
             )}
 
-            {/* Attachments Indicator */}
-            {task.attachments && task.attachments.length > 0 && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800/80 text-content-muted dark:text-gray-300 font-medium">
-                <Paperclip className="w-3.5 h-3.5" />
-                <span>{task.attachments.length}</span>
-              </span>
+            {/* Attachments Interactive Button */}
+            {attachments.length > 0 && (
+              <div className="relative" ref={attachmentsRef}>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowAttachmentsMenu((prev) => !prev);
+                  }}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-800/80 dark:hover:bg-gray-700 text-content-muted hover:text-content-strong dark:text-gray-300 font-medium transition-colors cursor-pointer"
+                  title="Click to view attachments"
+                >
+                  <Paperclip className="w-3.5 h-3.5" />
+                  <span>{attachments.length}</span>
+                </button>
+
+                {/* Attachments Popover Dropdown */}
+                {showAttachmentsMenu && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute left-0 bottom-full mb-2 w-64 bg-white dark:bg-[#1A1D27] rounded-xl shadow-xl border border-border-light dark:border-border-dark p-2.5 z-30 animate-in fade-in"
+                  >
+                    <div className="text-[11px] font-semibold text-content-muted uppercase tracking-wider mb-2 px-1">
+                      Attachments ({attachments.length})
+                    </div>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {attachments.map((att, idx) => {
+                        const url = getAttachmentUrl(att.url);
+                        const isImg = isImageAttachment(att);
+
+                        return (
+                          <div
+                            key={att._id || att.id || idx}
+                            className="flex items-center justify-between p-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-xs transition-colors"
+                          >
+                            <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-2">
+                              {isImg ? (
+                                <ImageIcon className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                              ) : (
+                                <FileText className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                              )}
+                              <span
+                                className="truncate font-medium text-content-strong dark:text-white"
+                                title={att.filename}
+                              >
+                                {att.filename}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowAttachmentsMenu(false);
+                                  setPreviewAttachment(att);
+                                }}
+                                className="p-1 text-content-muted hover:text-primary transition-colors"
+                                title="Preview"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                              <a
+                                href={url}
+                                download={att.filename}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1 text-content-muted hover:text-content-strong dark:hover:text-white transition-colors"
+                                title="Download"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                              </a>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -209,7 +347,14 @@ export default function TaskCard({
           </div>
         </div>
       )}
+
+      {/* Lightbox / Attachment Preview Modal */}
+      {previewAttachment && (
+        <AttachmentPreviewModal
+          attachment={previewAttachment}
+          onClose={() => setPreviewAttachment(null)}
+        />
+      )}
     </div>
   );
 }
-

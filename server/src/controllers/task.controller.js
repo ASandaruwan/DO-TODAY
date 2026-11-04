@@ -151,8 +151,8 @@ const createTask = async (req, res, next) => {
       description: description ? description.trim() : '',
       status: taskStatus,
       priority: priority || 'medium',
-      startDate: startDate ? new Date(startDate) : null,
-      dueDate: dueDate ? new Date(dueDate) : null,
+      startDate: startDate && String(startDate).trim() !== '' ? new Date(startDate) : null,
+      dueDate: dueDate && String(dueDate).trim() !== '' ? new Date(dueDate) : null,
       order: taskOrder,
       attachments,
     });
@@ -209,8 +209,12 @@ const updateTask = async (req, res, next) => {
     if (description !== undefined) task.description = description.trim();
     if (status !== undefined) task.status = status;
     if (priority !== undefined) task.priority = priority;
-    if (startDate !== undefined) task.startDate = startDate ? new Date(startDate) : null;
-    if (dueDate !== undefined) task.dueDate = dueDate ? new Date(dueDate) : null;
+    if (startDate !== undefined) {
+      task.startDate = startDate && String(startDate).trim() !== '' ? new Date(startDate) : null;
+    }
+    if (dueDate !== undefined) {
+      task.dueDate = dueDate && String(dueDate).trim() !== '' ? new Date(dueDate) : null;
+    }
     if (order !== undefined) task.order = Number(order);
 
     // Process new attachments

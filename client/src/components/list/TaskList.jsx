@@ -11,9 +11,15 @@ import {
   ArrowDown,
   Plus,
   Clock,
+  Eye,
+  Download,
+  FileText,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { useTasks } from '../../context/TaskContext';
 import { formatDisplayDate } from '../../utils/dateUtils';
+import { getAttachmentUrl, isImageAttachment } from '../../utils/attachmentUtils';
+import AttachmentPreviewModal from '../common/AttachmentPreviewModal';
 
 const priorityOrder = { high: 3, medium: 2, low: 1 };
 const statusOrder = { pending: 1, 'in-progress': 2, completed: 3 };
@@ -25,6 +31,8 @@ export default function TaskList({ onShowToast }) {
   const [sortField, setSortField] = useState('dueDate'); // 'title' | 'priority' | 'status' | 'dueDate'
   const [sortDirection, setSortDirection] = useState('asc'); // 'asc' | 'desc'
   const [deletingId, setDeletingId] = useState(null);
+  const [activeAttachmentMenuTaskId, setActiveAttachmentMenuTaskId] = useState(null);
+  const [previewAttachment, setPreviewAttachment] = useState(null);
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -63,8 +71,9 @@ export default function TaskList({ onShowToast }) {
 
   const handleToggleStatus = async (task, e) => {
     e.stopPropagation();
+    const taskId = task._id || task.id;
     const newStatus = task.status === 'completed' ? 'pending' : 'completed';
-    const res = await updateTaskStatus(task._id, newStatus, task.order || 0);
+    const res = await updateTaskStatus(taskId, newStatus, task.order || 0);
     if (!res?.success) {
       onShowToast?.(res?.error || 'Failed to update task status', 'error');
     }
@@ -211,12 +220,14 @@ export default function TaskList({ onShowToast }) {
           </thead>
           <tbody className="divide-y divide-border-light/60 dark:divide-border-dark/60">
             {sortedTasks.map((task) => {
+              const taskId = task._id || task.id;
               const isDone = task.status === 'completed';
               const overdue = isOverdue(task.dueDate, task.status);
+              const attachments = Array.isArray(task.attachments) ? task.attachments : [];
 
               return (
                 <tr
-                  key={task._id}
+                  key={taskId}
                   onClick={() => openEditTaskModal(task)}
                   className="group hover:bg-[#FAF9F5] dark:hover:bg-[#1F2330]/50 transition-colors cursor-pointer"
                 >
@@ -293,11 +304,85 @@ export default function TaskList({ onShowToast }) {
 
                   {/* Attachments */}
                   <td className="py-4 px-4 whitespace-nowrap">
-                    {task.attachments && task.attachments.length > 0 ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-content-muted dark:text-gray-300 text-xs font-medium">
-                        <Paperclip className="w-3.5 h-3.5" />
-                        <span>{task.attachments.length}</span>
-                      </span>
+                    {attachments.length > 0 ? (
+                      <div className="relative inline-block">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveAttachmentMenuTaskId((prev) =>
+                              prev === taskId ? null : taskId
+                            );
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-content-muted hover:text-content-strong dark:text-gray-300 text-xs font-medium transition-colors cursor-pointer"
+                          title="Click to view attachments"
+                        >
+                          <Paperclip className="w-3.5 h-3.5" />
+                          <span>{attachments.length}</span>
+                        </button>
+
+                        {/* Dropdown Menu for Attachments */}
+                        {activeAttachmentMenuTaskId === taskId && (
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="absolute left-0 bottom-full mb-2 w-64 bg-white dark:bg-[#1A1D27] rounded-xl shadow-xl border border-border-light dark:border-border-dark p-2.5 z-30 animate-in fade-in"
+                          >
+                            <div className="text-[11px] font-semibold text-content-muted uppercase tracking-wider mb-2 px-1">
+                              Files ({attachments.length})
+                            </div>
+                            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                              {attachments.map((att, idx) => {
+                                const url = getAttachmentUrl(att.url);
+                                const isImg = isImageAttachment(att);
+
+                                return (
+                                  <div
+                                    key={att._id || att.id || idx}
+                                    className="flex items-center justify-between p-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-xs transition-colors"
+                                  >
+                                    <div className="flex items-center gap-2 truncate flex-1 min-w-0 pr-2">
+                                      {isImg ? (
+                                        <ImageIcon className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                                      ) : (
+                                        <FileText className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                                      )}
+                                      <span
+                                        className="truncate font-medium text-content-strong dark:text-white"
+                                        title={att.filename}
+                                      >
+                                        {att.filename}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-1 flex-shrink-0">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setActiveAttachmentMenuTaskId(null);
+                                          setPreviewAttachment(att);
+                                        }}
+                                        className="p-1 text-content-muted hover:text-primary transition-colors"
+                                        title="Preview"
+                                      >
+                                        <Eye className="w-3.5 h-3.5" />
+                                      </button>
+                                      <a
+                                        href={url}
+                                        download={att.filename}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-1 text-content-muted hover:text-content-strong dark:hover:text-white transition-colors"
+                                        title="Download"
+                                      >
+                                        <Download className="w-3.5 h-3.5" />
+                                      </a>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-xs text-content-muted dark:text-gray-500">—</span>
                     )}
@@ -319,8 +404,8 @@ export default function TaskList({ onShowToast }) {
                       </button>
                       <button
                         type="button"
-                        disabled={deletingId === task._id}
-                        onClick={(e) => handleDelete(task._id, e)}
+                        disabled={deletingId === taskId}
+                        onClick={(e) => handleDelete(taskId, e)}
                         className="p-1.5 rounded-lg text-content-muted hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
                         title="Delete task"
                       >
@@ -334,6 +419,14 @@ export default function TaskList({ onShowToast }) {
           </tbody>
         </table>
       </div>
+
+      {/* Lightbox / Attachment Preview Modal */}
+      {previewAttachment && (
+        <AttachmentPreviewModal
+          attachment={previewAttachment}
+          onClose={() => setPreviewAttachment(null)}
+        />
+      )}
     </div>
   );
 }

@@ -46,7 +46,7 @@ export default function KanbanColumn({ column, tasks }) {
             )}
 
             {tasks.map((task, index) => (
-              <Draggable key={task._id} draggableId={String(task._id)} index={index}>
+              <Draggable key={task._id || task.id} draggableId={String(task._id || task.id)} index={index}>
                 {(dragProvided, dragSnapshot) => (
                   <TaskCard
                     task={task}

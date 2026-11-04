@@ -64,7 +64,24 @@ test('Task API: CRUD, stats, filters, isolation & export', async () => {
   assert.equal(createRes.status, 201);
   assert.equal(createRes.body.task.title, 'Design wireframes');
   assert.equal(createRes.body.task.priority, 'high');
-  const taskId = createRes.body.task.id;
+  assert.ok(createRes.body.task._id, 'Task should have _id');
+  assert.ok(createRes.body.task.id, 'Task should have id');
+  assert.equal(String(createRes.body.task._id), String(createRes.body.task.id));
+  const taskId = createRes.body.task._id;
+
+  // 1.5. Update task via PUT (status, title, priority, progress)
+  const putRes = await request(app)
+    .put(`/api/tasks/${taskId}`)
+    .set('Authorization', `Bearer ${userAToken}`)
+    .send({
+      title: 'Design wireframes',
+      status: 'pending',
+      priority: 'high',
+    });
+  assert.equal(putRes.status, 200);
+  assert.equal(putRes.body.task.title, 'Design wireframes');
+  assert.ok(putRes.body.task._id);
+  assert.ok(putRes.body.task.id);
 
   // 2. Create another task (in-progress) for User A
   await request(app)
@@ -167,5 +184,54 @@ test('Task API: CRUD, stats, filters, isolation & export', async () => {
     .delete(`/api/tasks/${taskId}`)
     .set('Authorization', `Bearer ${userAToken}`);
   assert.equal(delRes.status, 200);
+
+  // 14. Attachment flow: create with upload, view attachment URL via static GET, and remove attachment
+  const dummyBuffer = Buffer.from('fake image content');
+  const uploadRes = await request(app)
+    .post('/api/tasks')
+    .set('Authorization', `Bearer ${userAToken}`)
+    .field('title', 'Task with Attachment')
+    .field('status', 'pending')
+    .field('priority', 'medium')
+    .attach('attachments', dummyBuffer, 'screenshot.png');
+
+  assert.equal(uploadRes.status, 201);
+  assert.equal(uploadRes.body.task.title, 'Task with Attachment');
+  assert.ok(uploadRes.body.task._id);
+  assert.ok(uploadRes.body.task.id);
+  assert.equal(uploadRes.body.task.attachments.length, 1);
+  const attachment = uploadRes.body.task.attachments[0];
+  assert.equal(attachment.filename, 'screenshot.png');
+  assert.ok(attachment.url.startsWith('/uploads/'));
+  assert.ok(attachment._id);
+
+  // Verify attachment static serving
+  const fileGetRes = await request(app).get(attachment.url);
+  assert.equal(fileGetRes.status, 200);
+
+  // Update task status and priority after creation
+  const updateRes = await request(app)
+    .put(`/api/tasks/${uploadRes.body.task._id}`)
+    .set('Authorization', `Bearer ${userAToken}`)
+    .send({
+      title: 'Task with Attachment (In Progress)',
+      status: 'in-progress',
+      priority: 'high',
+    });
+  assert.equal(updateRes.status, 200);
+  assert.equal(updateRes.body.task.status, 'in-progress');
+  assert.equal(updateRes.body.task.priority, 'high');
+
+  // Remove attachment
+  const removeAttRes = await request(app)
+    .delete(`/api/tasks/${uploadRes.body.task._id}/attachments/${attachment._id}`)
+    .set('Authorization', `Bearer ${userAToken}`);
+  assert.equal(removeAttRes.status, 200);
+  assert.equal(removeAttRes.body.task.attachments.length, 0);
+
+  // Clean up task
+  await request(app)
+    .delete(`/api/tasks/${uploadRes.body.task._id}`)
+    .set('Authorization', `Bearer ${userAToken}`);
 });
 

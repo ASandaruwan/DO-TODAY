@@ -88,7 +88,7 @@ export default function TodayTasks() {
         <div className="space-y-3">
           <div className="space-y-3">
             {filteredTasks.map((task) => (
-              <TaskCard key={task._id} task={task} />
+              <TaskCard key={task._id || task.id} task={task} />
             ))}
           </div>
 

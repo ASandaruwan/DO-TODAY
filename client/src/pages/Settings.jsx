@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
-import { useTasks } from '../context/TaskContext';
 import { useToast } from '../context/ToastContext';
 import { useNotifications } from '../context/NotificationContext';
 import api from '../api/axios';
@@ -10,12 +9,9 @@ import {
   Palette,
   Sun,
   Moon,
-  Download,
   Trash2,
   AlertTriangle,
   CheckCircle2,
-  FileJson,
-  Database,
   X,
   ShieldAlert,
   Bell,
@@ -27,7 +23,6 @@ import {
 export default function Settings() {
   const { theme, setTheme } = useTheme();
   const { user, logout } = useAuth();
-  const { tasks } = useTasks();
   const { toast } = useToast();
   const {
     settings: notifSettings,
@@ -37,9 +32,6 @@ export default function Settings() {
     sendTestNotification,
   } = useNotifications();
   const navigate = useNavigate();
-
-  // Export State
-  const [downloading, setDownloading] = useState(false);
 
   // Delete Account Modal State
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -52,36 +44,6 @@ export default function Settings() {
     if (newTheme === theme) return;
     setTheme(newTheme);
     toast.success(`Switched to ${newTheme === 'dark' ? 'Dark' : 'Light'} Mode`);
-  };
-
-  // Handle JSON Data Export Download
-  const handleExportData = async () => {
-    setDownloading(true);
-    try {
-      const response = await api.get('/users/me/export', {
-        responseType: 'blob',
-      });
-
-      // Create download blob link
-      const blob = new Blob([response.data], { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-
-      const today = new Date().toISOString().slice(0, 10);
-      link.setAttribute('download', `do-today-backup-${today}.json`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-
-      toast.success('Your JSON backup has been downloaded successfully!');
-    } catch (err) {
-      console.error('Failed to export data:', err);
-      toast.error('Failed to export data. Please try again.');
-    } finally {
-      setDownloading(false);
-    }
   };
 
   // Handle Account Deletion
@@ -120,7 +82,7 @@ export default function Settings() {
           Settings
         </h1>
         <p className="text-content-muted dark:text-gray-400 text-base sm:text-lg mt-1 font-normal">
-          Customize your interface theme, backup your personal tasks, and manage data privacy.
+          Customize your interface theme, configure deadline alerts, and manage account preferences.
         </p>
       </div>
 
@@ -218,61 +180,7 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* 2. Data Backup & Export Section */}
-        <div className="bg-surface-light dark:bg-[#1A1D27] p-6 sm:p-8 rounded-card border border-border-light dark:border-border-dark shadow-card transition-colors">
-          <div className="flex items-center gap-2.5 mb-2">
-            <Database className="w-5 h-5 text-primary" />
-            <h2 className="font-outfit font-bold text-xl text-content-strong dark:text-white">
-              Data Backup & Export
-            </h2>
-          </div>
-          <p className="text-xs sm:text-sm text-content-muted dark:text-gray-400 mb-6">
-            Export a complete JSON archive of your personal account profile, tasks, statuses, priorities, and attachment links.
-          </p>
-
-          <div className="bg-white dark:bg-[#13151F] p-4 sm:p-5 rounded-2xl border border-border-light/80 dark:border-border-dark/80 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-primary-soft dark:bg-primary/20 text-primary flex items-center justify-center flex-shrink-0">
-                <FileJson className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-outfit font-bold text-sm text-content-strong dark:text-white">
-                  DO-TODAY Portable Backup
-                </h4>
-                <p className="text-xs text-content-muted dark:text-gray-400">
-                  {tasks?.length || 0} tasks ready for export &middot; JSON format &middot; Includes attachment links
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleExportData}
-              disabled={downloading}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white font-semibold text-sm shadow-btn-red transition-all disabled:opacity-50 active:scale-95 flex-shrink-0"
-            >
-              {downloading ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Download className="w-4 h-4" />
-              )}
-              <span>{downloading ? 'Preparing Backup...' : 'Export My Data (JSON)'}</span>
-            </button>
-          </div>
-
-          <div className="text-xs text-content-muted dark:text-gray-400 space-y-1">
-            <p className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Full data ownership: no lock-in, portable JSON file.</span>
-            </p>
-            <p className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Sensitive credentials like password hashes are never included in the export.</span>
-            </p>
-          </div>
-        </div>
-
-        {/* 3. Deadline Notifications & Reminders */}
+        {/* 2. Deadline Notifications & Reminders */}
         <div className="bg-surface-light dark:bg-[#1A1D27] p-6 sm:p-8 rounded-card border border-border-light dark:border-border-dark shadow-card transition-colors">
           <div className="flex items-center gap-2.5 mb-2">
             <Bell className="w-5 h-5 text-primary" />
@@ -425,7 +333,7 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* 4. Danger Zone / Delete Account */}
+        {/* 3. Danger Zone / Delete Account */}
         <div className="bg-surface-light dark:bg-[#1A1D27] p-6 sm:p-8 rounded-card border border-red-200 dark:border-red-950/60 shadow-card transition-colors">
           <div className="flex items-center gap-2.5 mb-2 text-primary">
             <ShieldAlert className="w-5 h-5" />

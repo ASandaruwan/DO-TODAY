@@ -320,5 +320,46 @@ test('Task API: CRUD, stats, filters, isolation & export', async () => {
     .get(`/api/tasks/${bulkIds[0]}`)
     .set('Authorization', `Bearer ${userAToken}`);
   assert.equal(verifyDel1.status, 404);
+
+  // Test In-Column Reordering & Sibling Sequential Order Indexing
+  const rTask1 = await request(app)
+    .post('/api/tasks')
+    .set('Authorization', `Bearer ${userAToken}`)
+    .send({ title: 'Reorder 1', status: 'pending', order: 0 });
+  const rTask2 = await request(app)
+    .post('/api/tasks')
+    .set('Authorization', `Bearer ${userAToken}`)
+    .send({ title: 'Reorder 2', status: 'pending', order: 1 });
+  const rTask3 = await request(app)
+    .post('/api/tasks')
+    .set('Authorization', `Bearer ${userAToken}`)
+    .send({ title: 'Reorder 3', status: 'pending', order: 2 });
+
+  assert.equal(rTask1.status, 201);
+  assert.equal(rTask2.status, 201);
+  assert.equal(rTask3.status, 201);
+
+  // Move task 3 to index 0 within pending
+  const moveReorderRes = await request(app)
+    .patch(`/api/tasks/${rTask3.body.task._id}/status`)
+    .set('Authorization', `Bearer ${userAToken}`)
+    .send({ status: 'pending', order: 0 });
+  assert.equal(moveReorderRes.status, 200);
+
+  // Dedicated array reorder endpoint test
+  const arrayReorderRes = await request(app)
+    .patch('/api/tasks/reorder')
+    .set('Authorization', `Bearer ${userAToken}`)
+    .send({
+      status: 'pending',
+      taskIds: [rTask2.body.task._id, rTask1.body.task._id, rTask3.body.task._id],
+    });
+  assert.equal(arrayReorderRes.status, 200);
+
+  // Clean up reorder tasks
+  await request(app)
+    .delete('/api/tasks/bulk')
+    .set('Authorization', `Bearer ${userAToken}`)
+    .send({ taskIds: [rTask1.body.task._id, rTask2.body.task._id, rTask3.body.task._id] });
 });
 

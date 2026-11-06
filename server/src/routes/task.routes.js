@@ -14,6 +14,7 @@ const {
   deleteSubtask,
   bulkUpdateStatus,
   bulkDeleteTasks,
+  reorderTasks,
 } = require('../controllers/task.controller');
 const { protect } = require('../middleware/auth');
 const { upload } = require('../middleware/upload');
@@ -44,6 +45,7 @@ router.post(
 // Bulk operations (must precede /:id)
 router.patch('/bulk/status', bulkUpdateStatus);
 router.delete('/bulk', bulkDeleteTasks);
+router.patch('/reorder', reorderTasks);
 
 router.get('/:id', getTaskById);
 

@@ -251,13 +251,20 @@ export const TaskProvider = ({ children }) => {
     }
     const previousTasks = [...tasks];
 
+    const sortByOrder = (a, b) => {
+      const orderA = typeof a.order === 'number' ? a.order : 0;
+      const orderB = typeof b.order === 'number' ? b.order : 0;
+      if (orderA !== orderB) return orderA - orderB;
+      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+    };
+
     // Optimistically update
     setTasks((currentTasks) => {
       const taskToMove = currentTasks.find((t) => t._id === taskId || t.id === taskId);
       if (!taskToMove) return currentTasks;
 
       const otherTasks = currentTasks.filter((t) => t._id !== taskId && t.id !== taskId);
-      const destTasks = otherTasks.filter((t) => t.status === destStatus);
+      const destTasks = otherTasks.filter((t) => t.status === destStatus).sort(sortByOrder);
       const remainingTasks = otherTasks.filter((t) => t.status !== destStatus);
 
       const updatedTaskRecord = {

@@ -322,15 +322,76 @@ const updateTaskStatus = async (req, res, next) => {
     }
 
     task.status = status;
-    if (order !== undefined && !isNaN(Number(order))) {
-      task.order = Number(order);
+    const targetOrder = Number(order);
+
+    if (status === 'completed' && task.progress < 100) {
+      task.progress = 100;
+    } else if (status === 'pending' && task.progress === 100) {
+      task.progress = 0;
     }
 
-    await task.save();
+    // Reorder siblings in the destination column
+    if (!isNaN(targetOrder)) {
+      task.order = targetOrder;
+      await task.save();
+
+      // Fetch all sibling tasks in this column excluding the current one
+      const siblings = await Task.find({
+        user: req.user._id,
+        status,
+        _id: { $ne: task._id },
+      }).sort({ order: 1, createdAt: -1 });
+
+      // Insert task at targetOrder position
+      siblings.splice(Math.min(targetOrder, siblings.length), 0, task);
+
+      // Re-index all tasks in the column sequentially: 0, 1, 2, ...
+      const bulkOps = siblings.map((t, idx) => ({
+        updateOne: {
+          filter: { _id: t._id },
+          update: { $set: { order: idx } },
+        },
+      }));
+
+      if (bulkOps.length > 0) {
+        await Task.bulkWrite(bulkOps);
+      }
+    } else {
+      await task.save();
+    }
 
     res.status(200).json({
       success: true,
       task,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Reorder tasks in column via array of task IDs
+// @route   PATCH /api/tasks/reorder
+// @access  Private
+const reorderTasks = async (req, res, next) => {
+  try {
+    const { status, taskIds } = req.body;
+
+    if (!Array.isArray(taskIds) || taskIds.length === 0) {
+      return res.status(400).json({ message: 'taskIds array is required' });
+    }
+
+    const bulkOps = taskIds.map((id, index) => ({
+      updateOne: {
+        filter: { _id: id, user: req.user._id },
+        update: { $set: { order: index, ...(status ? { status } : {}) } },
+      },
+    }));
+
+    await Task.bulkWrite(bulkOps);
+
+    res.status(200).json({
+      success: true,
+      message: 'Tasks reordered successfully',
     });
   } catch (err) {
     next(err);
@@ -624,5 +685,6 @@ module.exports = {
   deleteSubtask,
   bulkUpdateStatus,
   bulkDeleteTasks,
+  reorderTasks,
 };
 

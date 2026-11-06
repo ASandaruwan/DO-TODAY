@@ -38,6 +38,10 @@ router.post(
       .withMessage('Title is required')
       .isLength({ max: 150 })
       .withMessage('Title cannot exceed 150 characters'),
+    body('recurrence')
+      .optional()
+      .isIn(['none', 'daily', 'weekly', 'monthly'])
+      .withMessage('Recurrence must be none, daily, weekly, or monthly'),
   ]),
   createTask
 );
@@ -60,6 +64,10 @@ router.put(
       .withMessage('Title cannot be empty')
       .isLength({ max: 150 })
       .withMessage('Title cannot exceed 150 characters'),
+    body('recurrence')
+      .optional()
+      .isIn(['none', 'daily', 'weekly', 'monthly'])
+      .withMessage('Recurrence must be none, daily, weekly, or monthly'),
   ]),
   updateTask
 );

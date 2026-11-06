@@ -13,6 +13,7 @@ import {
   CheckSquare,
   Plus,
   Check,
+  Repeat,
 } from 'lucide-react';
 import { useTasks } from '../../context/TaskContext';
 import { useToast } from '../../context/ToastContext';
@@ -46,6 +47,7 @@ export default function TaskModal() {
   const [priority, setPriority] = useState('medium');
   const [startDate, setStartDate] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [recurrence, setRecurrence] = useState('none');
   const [subtasks, setSubtasks] = useState([]);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [progress, setProgress] = useState(0);
@@ -74,6 +76,7 @@ export default function TaskModal() {
         setDueDate(
           editingTask.dueDate ? editingTask.dueDate.substring(0, 10) : ''
         );
+        setRecurrence(editingTask.recurrence || 'none');
         setExistingAttachments(editingTask.attachments || []);
         setSubtasks(
           Array.isArray(editingTask.subtasks)
@@ -92,6 +95,7 @@ export default function TaskModal() {
         setPriority('medium');
         setStartDate(modalPrefilledDate || '');
         setDueDate(modalPrefilledDate || '');
+        setRecurrence('none');
         setExistingAttachments([]);
         setSubtasks([]);
         setProgress(0);
@@ -230,6 +234,7 @@ export default function TaskModal() {
       formData.append('priority', priority);
       formData.append('startDate', startDate || '');
       formData.append('dueDate', dueDate || '');
+      formData.append('recurrence', recurrence);
       formData.append('progress', progress);
       formData.append('subtasks', JSON.stringify(subtasks));
 
@@ -245,6 +250,7 @@ export default function TaskModal() {
         priority,
         startDate: startDate || null,
         dueDate: dueDate || null,
+        recurrence,
         progress,
         subtasks,
       };
@@ -489,6 +495,24 @@ export default function TaskModal() {
                 className="w-full h-11 px-3 bg-surface-light dark:bg-[#13151F] border border-border-light dark:border-border-dark rounded-xl text-content-strong dark:text-white text-sm focus:outline-none focus:border-primary"
               />
             </div>
+          </div>
+
+          {/* Recurrence / Repeat */}
+          <div>
+            <label className="block text-sm font-semibold text-content-strong dark:text-gray-200 mb-1.5 flex items-center gap-1.5">
+              <Repeat className="w-4 h-4 text-primary" />
+              <span>Repeat / Recurrence</span>
+            </label>
+            <select
+              value={recurrence}
+              onChange={(e) => setRecurrence(e.target.value)}
+              className="w-full h-11 px-3 bg-surface-light dark:bg-[#13151F] border border-border-light dark:border-border-dark rounded-xl text-content-strong dark:text-white text-sm focus:outline-none focus:border-primary"
+            >
+              <option value="none">Does not repeat</option>
+              <option value="daily">Daily (spawns new task when completed)</option>
+              <option value="weekly">Weekly (spawns new task when completed)</option>
+              <option value="monthly">Monthly (spawns new task when completed)</option>
+            </select>
           </div>
 
           {/* File Attachments Section */}

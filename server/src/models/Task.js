@@ -74,6 +74,11 @@ const taskSchema = new mongoose.Schema(
       max: 100,
       default: 0,
     },
+    recurrence: {
+      type: String,
+      enum: ['none', 'daily', 'weekly', 'monthly'],
+      default: 'none',
+    },
     subtasks: [subtaskSchema],
     attachments: [attachmentSchema],
   },

@@ -16,6 +16,7 @@ import {
   FileText,
   Image as ImageIcon,
   CheckSquare,
+  Repeat,
 } from 'lucide-react';
 import { useTasks } from '../../context/TaskContext';
 import { formatDisplayDate } from '../../utils/dateUtils';
@@ -342,6 +343,15 @@ export default function TaskList({ onShowToast }) {
                           <span>
                             {task.subtasks.filter((s) => s.completed).length}/{task.subtasks.length}
                           </span>
+                        </span>
+                      )}
+                      {task.recurrence && task.recurrence !== 'none' && (
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 text-[11px] font-semibold border border-purple-200 dark:border-purple-800/40 capitalize flex-shrink-0"
+                          title={`Repeats ${task.recurrence}`}
+                        >
+                          <Repeat className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                          <span>{task.recurrence}</span>
                         </span>
                       )}
                     </div>

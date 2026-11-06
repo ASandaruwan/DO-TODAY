@@ -13,6 +13,7 @@ import {
   Image as ImageIcon,
   CheckSquare,
   Check,
+  Repeat,
 } from 'lucide-react';
 import { useTasks } from '../../context/TaskContext';
 import { useToast } from '../../context/ToastContext';
@@ -238,6 +239,17 @@ export default function TaskCard({
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800/80 text-content-muted dark:text-gray-300 font-medium">
                 <Calendar className="w-3.5 h-3.5 text-primary" />
                 <span>Due {formatDisplayDate(task.dueDate)}</span>
+              </span>
+            )}
+
+            {/* Recurrence Chip */}
+            {task.recurrence && task.recurrence !== 'none' && (
+              <span
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-800/40 font-medium capitalize text-xs"
+                title={`Repeats ${task.recurrence}`}
+              >
+                <Repeat className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                <span>{task.recurrence}</span>
               </span>
             )}
 

@@ -361,5 +361,47 @@ test('Task API: CRUD, stats, filters, isolation & export', async () => {
     .delete('/api/tasks/bulk')
     .set('Authorization', `Bearer ${userAToken}`)
     .send({ taskIds: [rTask1.body.task._id, rTask2.body.task._id, rTask3.body.task._id] });
+
+  // Test Recurring Task: daily recurrence spawning new task on completion
+  const recTaskRes = await request(app)
+    .post('/api/tasks')
+    .set('Authorization', `Bearer ${userAToken}`)
+    .send({
+      title: 'Daily Standup Note',
+      status: 'pending',
+      recurrence: 'daily',
+      dueDate: '2026-10-01T10:00:00.000Z',
+      subtasks: [{ title: 'Write bullet points', completed: true }],
+    });
+
+  assert.equal(recTaskRes.status, 201);
+  assert.equal(recTaskRes.body.task.recurrence, 'daily');
+  const originalRecTaskId = recTaskRes.body.task._id;
+
+  // Complete the recurring task
+  const completeRecRes = await request(app)
+    .patch(`/api/tasks/${originalRecTaskId}/status`)
+    .set('Authorization', `Bearer ${userAToken}`)
+    .send({ status: 'completed' });
+
+  assert.equal(completeRecRes.status, 200);
+  assert.equal(completeRecRes.body.task.status, 'completed');
+  assert.ok(completeRecRes.body.nextTask, 'Must spawn nextTask');
+  assert.equal(completeRecRes.body.nextTask.title, 'Daily Standup Note');
+  assert.equal(completeRecRes.body.nextTask.status, 'pending');
+  assert.equal(completeRecRes.body.nextTask.progress, 0);
+  assert.equal(completeRecRes.body.nextTask.recurrence, 'daily');
+  assert.equal(completeRecRes.body.nextTask.subtasks[0].completed, false);
+
+  // Check that the next due date is +1 day
+  const originalDate = new Date('2026-10-01T10:00:00.000Z');
+  const nextDueDate = new Date(completeRecRes.body.nextTask.dueDate);
+  assert.equal(nextDueDate.getDate(), originalDate.getDate() + 1);
+
+  // Clean up recurring tasks
+  await request(app)
+    .delete('/api/tasks/bulk')
+    .set('Authorization', `Bearer ${userAToken}`)
+    .send({ taskIds: [originalRecTaskId, completeRecRes.body.nextTask._id] });
 });
 

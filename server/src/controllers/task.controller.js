@@ -1,6 +1,54 @@
 const Task = require('../models/Task');
 const { processUploadedFiles, deleteAttachmentFile } = require('../utils/storage');
 
+// Helper to calculate the next date for recurring tasks
+const calculateNextDate = (baseDate, recurrence) => {
+  if (!baseDate) return null;
+  const d = new Date(baseDate);
+  if (isNaN(d.getTime())) return null;
+
+  if (recurrence === 'daily') {
+    d.setDate(d.getDate() + 1);
+  } else if (recurrence === 'weekly') {
+    d.setDate(d.getDate() + 7);
+  } else if (recurrence === 'monthly') {
+    d.setMonth(d.getMonth() + 1);
+  }
+  return d;
+};
+
+// Helper to spawn the next iteration of a recurring task on completion
+const handleRecurrenceOnComplete = async (task, user) => {
+  if (!task.recurrence || task.recurrence === 'none') {
+    return null;
+  }
+
+  const nextDueDate = calculateNextDate(task.dueDate || new Date(), task.recurrence);
+  const nextStartDate = task.startDate ? calculateNextDate(task.startDate, task.recurrence) : null;
+
+  const resetSubtasks = (task.subtasks || []).map((s) => ({
+    title: s.title,
+    completed: false,
+  }));
+
+  const nextTask = await Task.create({
+    user: user._id,
+    title: task.title,
+    description: task.description,
+    status: 'pending',
+    priority: task.priority,
+    startDate: nextStartDate,
+    dueDate: nextDueDate,
+    progress: 0,
+    recurrence: task.recurrence,
+    subtasks: resetSubtasks,
+    order: 0,
+    attachments: [],
+  });
+
+  return nextTask;
+};
+
 // @desc    Get all tasks for logged-in user with filters
 // @route   GET /api/tasks
 // @access  Private
@@ -128,7 +176,18 @@ const getStats = async (req, res, next) => {
 // @access  Private
 const createTask = async (req, res, next) => {
   try {
-    const { title, description, status, priority, startDate, dueDate, order, progress, subtasks } = req.body;
+    const {
+      title,
+      description,
+      status,
+      priority,
+      startDate,
+      dueDate,
+      order,
+      progress,
+      subtasks,
+      recurrence,
+    } = req.body;
 
     const taskStatus = status || 'pending';
 
@@ -187,13 +246,20 @@ const createTask = async (req, res, next) => {
       dueDate: dueDate && String(dueDate).trim() !== '' ? new Date(dueDate) : null,
       order: taskOrder,
       progress: taskProgress,
+      recurrence: recurrence || 'none',
       subtasks: cleanSubtasks,
       attachments,
     });
 
+    let nextTask = null;
+    if (task.status === 'completed') {
+      nextTask = await handleRecurrenceOnComplete(task, req.user);
+    }
+
     res.status(201).json({
       success: true,
       task,
+      nextTask,
     });
   } catch (err) {
     next(err);
@@ -237,12 +303,26 @@ const updateTask = async (req, res, next) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    const { title, description, status, priority, startDate, dueDate, order, progress, subtasks } = req.body;
+    const {
+      title,
+      description,
+      status,
+      priority,
+      startDate,
+      dueDate,
+      order,
+      progress,
+      subtasks,
+      recurrence,
+    } = req.body;
+
+    const oldStatus = task.status;
 
     if (title !== undefined) task.title = title.trim();
     if (description !== undefined) task.description = description.trim();
     if (status !== undefined) task.status = status;
     if (priority !== undefined) task.priority = priority;
+    if (recurrence !== undefined) task.recurrence = recurrence;
     if (startDate !== undefined) {
       task.startDate = startDate && String(startDate).trim() !== '' ? new Date(startDate) : null;
     }
@@ -292,9 +372,15 @@ const updateTask = async (req, res, next) => {
 
     await task.save();
 
+    let nextTask = null;
+    if (task.status === 'completed' && oldStatus !== 'completed') {
+      nextTask = await handleRecurrenceOnComplete(task, req.user);
+    }
+
     res.status(200).json({
       success: true,
       task,
+      nextTask,
     });
   } catch (err) {
     next(err);
@@ -321,6 +407,7 @@ const updateTaskStatus = async (req, res, next) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
+    const oldStatus = task.status;
     task.status = status;
     const targetOrder = Number(order);
 
@@ -360,9 +447,15 @@ const updateTaskStatus = async (req, res, next) => {
       await task.save();
     }
 
+    let nextTask = null;
+    if (status === 'completed' && oldStatus !== 'completed') {
+      nextTask = await handleRecurrenceOnComplete(task, req.user);
+    }
+
     res.status(200).json({
       success: true,
       task,
+      nextTask,
     });
   } catch (err) {
     next(err);
@@ -477,6 +570,8 @@ const toggleSubtask = async (req, res, next) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
+    const oldStatus = task.status;
+
     const subtask = task.subtasks.id(req.params.subtaskId);
     if (!subtask) {
       return res.status(404).json({ message: 'Subtask not found' });
@@ -497,9 +592,15 @@ const toggleSubtask = async (req, res, next) => {
 
     await task.save();
 
+    let nextTask = null;
+    if (task.status === 'completed' && oldStatus !== 'completed') {
+      nextTask = await handleRecurrenceOnComplete(task, req.user);
+    }
+
     res.status(200).json({
       success: true,
       task,
+      nextTask,
     });
   } catch (err) {
     next(err);

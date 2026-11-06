@@ -170,7 +170,14 @@ export const TaskProvider = ({ children }) => {
 
       const response = await api.post('/tasks', taskData, config);
       const newTask = normalizeTask(response.data?.task || response.data);
-      setTasks((prev) => [newTask, ...prev]);
+      const nextTask = response.data?.nextTask ? normalizeTask(response.data.nextTask) : null;
+      setTasks((prev) => {
+        const list = [newTask, ...prev];
+        if (nextTask && !list.some((t) => t._id === nextTask._id)) {
+          return [nextTask, ...list];
+        }
+        return list;
+      });
       fetchStats();
       return { success: true, task: newTask };
     } catch (err) {
@@ -196,9 +203,14 @@ export const TaskProvider = ({ children }) => {
 
       const response = await api.put(`/tasks/${targetId}`, taskData, config);
       const updatedTask = normalizeTask(response.data?.task || response.data);
-      setTasks((prev) =>
-        prev.map((t) => (t._id === targetId || t.id === targetId ? updatedTask : t))
-      );
+      const nextTask = response.data?.nextTask ? normalizeTask(response.data.nextTask) : null;
+      setTasks((prev) => {
+        const updated = prev.map((t) => (t._id === targetId || t.id === targetId ? updatedTask : t));
+        if (nextTask && !updated.some((t) => t._id === nextTask._id)) {
+          return [nextTask, ...updated];
+        }
+        return updated;
+      });
       fetchStats();
       return { success: true, task: updatedTask };
     } catch (err) {
@@ -231,9 +243,14 @@ export const TaskProvider = ({ children }) => {
       });
 
       const updatedTask = normalizeTask(response.data?.task || response.data);
-      setTasks((prev) =>
-        prev.map((t) => (t._id === id || t.id === id ? updatedTask : t))
-      );
+      const nextTask = response.data?.nextTask ? normalizeTask(response.data.nextTask) : null;
+      setTasks((prev) => {
+        const updated = prev.map((t) => (t._id === id || t.id === id ? updatedTask : t));
+        if (nextTask && !updated.some((t) => t._id === nextTask._id)) {
+          return [nextTask, ...updated];
+        }
+        return updated;
+      });
       fetchStats();
       return { success: true, task: updatedTask };
     } catch (err) {
@@ -368,9 +385,14 @@ export const TaskProvider = ({ children }) => {
     try {
       const response = await api.patch(`/tasks/${taskId}/subtasks/${subtaskId}/toggle`);
       const updatedTask = normalizeTask(response.data?.task || response.data);
-      setTasks((prev) =>
-        prev.map((t) => (t._id === taskId || t.id === taskId ? updatedTask : t))
-      );
+      const nextTask = response.data?.nextTask ? normalizeTask(response.data.nextTask) : null;
+      setTasks((prev) => {
+        const updated = prev.map((t) => (t._id === taskId || t.id === taskId ? updatedTask : t));
+        if (nextTask && !updated.some((t) => t._id === nextTask._id)) {
+          return [nextTask, ...updated];
+        }
+        return updated;
+      });
       fetchStats();
       return { success: true, task: updatedTask };
     } catch (err) {

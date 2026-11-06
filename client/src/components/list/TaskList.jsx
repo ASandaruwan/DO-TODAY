@@ -21,19 +21,30 @@ import { useTasks } from '../../context/TaskContext';
 import { formatDisplayDate } from '../../utils/dateUtils';
 import { getAttachmentUrl, isImageAttachment } from '../../utils/attachmentUtils';
 import AttachmentPreviewModal from '../common/AttachmentPreviewModal';
+import BulkActionBar from '../common/BulkActionBar';
 
 const priorityOrder = { high: 3, medium: 2, low: 1 };
 const statusOrder = { pending: 1, 'in-progress': 2, completed: 3 };
 
 export default function TaskList({ onShowToast }) {
-  const { tasks, updateTaskStatus, deleteTask, openEditTaskModal, openNewTaskModal, resetFilters } =
-    useTasks();
+  const {
+    tasks,
+    updateTaskStatus,
+    deleteTask,
+    openEditTaskModal,
+    openNewTaskModal,
+    resetFilters,
+    bulkUpdateStatus,
+    bulkDeleteTasks,
+  } = useTasks();
 
   const [sortField, setSortField] = useState('dueDate'); // 'title' | 'priority' | 'status' | 'dueDate'
   const [sortDirection, setSortDirection] = useState('asc'); // 'asc' | 'desc'
   const [deletingId, setDeletingId] = useState(null);
   const [activeAttachmentMenuTaskId, setActiveAttachmentMenuTaskId] = useState(null);
   const [previewAttachment, setPreviewAttachment] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -89,6 +100,49 @@ export default function TaskList({ onShowToast }) {
       onShowToast?.(res?.error || 'Failed to delete task', 'error');
     } else {
       onShowToast?.('Task deleted successfully', 'success');
+    }
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedIds.length === sortedTasks.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(sortedTasks.map((t) => t._id || t.id));
+    }
+  };
+
+  const handleToggleSelectTask = (taskId, e) => {
+    e.stopPropagation();
+    setSelectedIds((prev) =>
+      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]
+    );
+  };
+
+  const handleBulkUpdateStatus = async (status) => {
+    if (selectedIds.length === 0) return;
+    setBulkLoading(true);
+    const count = selectedIds.length;
+    const res = await bulkUpdateStatus(selectedIds, status);
+    setBulkLoading(false);
+    if (res?.success) {
+      onShowToast?.(`Updated status for ${count} tasks`, 'success');
+      setSelectedIds([]);
+    } else {
+      onShowToast?.(res?.error || 'Failed to update tasks', 'error');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    setBulkLoading(true);
+    const count = selectedIds.length;
+    const res = await bulkDeleteTasks(selectedIds);
+    setBulkLoading(false);
+    if (res?.success) {
+      onShowToast?.(`Deleted ${count} tasks successfully`, 'success');
+      setSelectedIds([]);
+    } else {
+      onShowToast?.(res?.error || 'Failed to delete tasks', 'error');
     }
   };
 
@@ -168,7 +222,16 @@ export default function TaskList({ onShowToast }) {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-border-light dark:border-border-dark bg-[#FAFAFA] dark:bg-[#151722]/80 text-xs font-semibold text-content-muted dark:text-gray-400 uppercase tracking-wider select-none">
-              <th scope="col" className="w-12 py-4 pl-6 pr-2">
+              <th scope="col" className="w-10 py-4 pl-6 pr-1">
+                <input
+                  type="checkbox"
+                  aria-label="Select all tasks"
+                  checked={sortedTasks.length > 0 && selectedIds.length === sortedTasks.length}
+                  onChange={handleToggleSelectAll}
+                  className="w-4 h-4 rounded border-border-light dark:border-border-dark text-primary focus:ring-primary dark:bg-[#13151F] cursor-pointer"
+                />
+              </th>
+              <th scope="col" className="w-10 py-4 px-2">
                 <span className="sr-only">Toggle Status</span>
               </th>
               <th
@@ -223,6 +286,7 @@ export default function TaskList({ onShowToast }) {
             {sortedTasks.map((task) => {
               const taskId = task._id || task.id;
               const isDone = task.status === 'completed';
+              const isSelected = selectedIds.includes(taskId);
               const overdue = isOverdue(task.dueDate, task.status);
               const attachments = Array.isArray(task.attachments) ? task.attachments : [];
 
@@ -230,10 +294,26 @@ export default function TaskList({ onShowToast }) {
                 <tr
                   key={taskId}
                   onClick={() => openEditTaskModal(task)}
-                  className="group hover:bg-[#FAF9F5] dark:hover:bg-[#1F2330]/50 transition-colors cursor-pointer"
+                  className={`group transition-colors cursor-pointer ${
+                    isSelected
+                      ? 'bg-primary/10 dark:bg-primary/20'
+                      : 'hover:bg-[#FAF9F5] dark:hover:bg-[#1F2330]/50'
+                  }`}
                 >
+                  {/* Select Checkbox */}
+                  <td className="py-4 pl-6 pr-1">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select task ${task.title}`}
+                      checked={isSelected}
+                      onChange={(e) => handleToggleSelectTask(taskId, e)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-4 h-4 rounded border-border-light dark:border-border-dark text-primary focus:ring-primary dark:bg-[#13151F] cursor-pointer"
+                    />
+                  </td>
+
                   {/* Status Toggle Checkbox */}
-                  <td className="py-4 pl-6 pr-2">
+                  <td className="py-4 px-2">
                     <button
                       type="button"
                       onClick={(e) => handleToggleStatus(task, e)}
@@ -446,6 +526,15 @@ export default function TaskList({ onShowToast }) {
           onClose={() => setPreviewAttachment(null)}
         />
       )}
+
+      {/* Floating Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        onUpdateStatus={handleBulkUpdateStatus}
+        onDelete={handleBulkDelete}
+        onDeselectAll={() => setSelectedIds([])}
+        loading={bulkLoading}
+      />
     </div>
   );
 }

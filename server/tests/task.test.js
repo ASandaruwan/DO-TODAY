@@ -281,5 +281,44 @@ test('Task API: CRUD, stats, filters, isolation & export', async () => {
   await request(app)
     .delete(`/api/tasks/${uploadRes.body.task._id}`)
     .set('Authorization', `Bearer ${userAToken}`);
+
+  // Test Bulk Operations (PATCH /api/tasks/bulk/status and DELETE /api/tasks/bulk)
+  const taskB1 = await request(app)
+    .post('/api/tasks')
+    .set('Authorization', `Bearer ${userAToken}`)
+    .send({ title: 'Bulk Task 1', status: 'pending' });
+  const taskB2 = await request(app)
+    .post('/api/tasks')
+    .set('Authorization', `Bearer ${userAToken}`)
+    .send({ title: 'Bulk Task 2', status: 'pending' });
+
+  assert.equal(taskB1.status, 201);
+  assert.equal(taskB2.status, 201);
+
+  const bulkIds = [taskB1.body.task._id, taskB2.body.task._id];
+
+  // Bulk update status to 'completed'
+  const bulkUpdateRes = await request(app)
+    .patch('/api/tasks/bulk/status')
+    .set('Authorization', `Bearer ${userAToken}`)
+    .send({ taskIds: bulkIds, status: 'completed' });
+
+  assert.equal(bulkUpdateRes.status, 200);
+  assert.equal(bulkUpdateRes.body.modifiedCount, 2);
+
+  // Bulk delete both tasks
+  const bulkDelRes = await request(app)
+    .delete('/api/tasks/bulk')
+    .set('Authorization', `Bearer ${userAToken}`)
+    .send({ taskIds: bulkIds });
+
+  assert.equal(bulkDelRes.status, 200);
+  assert.equal(bulkDelRes.body.deletedCount, 2);
+
+  // Verify deletion
+  const verifyDel1 = await request(app)
+    .get(`/api/tasks/${bulkIds[0]}`)
+    .set('Authorization', `Bearer ${userAToken}`);
+  assert.equal(verifyDel1.status, 404);
 });
 

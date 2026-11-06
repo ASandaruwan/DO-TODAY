@@ -373,6 +373,56 @@ export const TaskProvider = ({ children }) => {
     }
   };
 
+  // Bulk update status for multiple tasks
+  const bulkUpdateStatus = async (taskIds, status) => {
+    if (!Array.isArray(taskIds) || taskIds.length === 0) return { success: false };
+    const previousTasks = [...tasks];
+
+    // Optimistically update
+    setTasks((prev) =>
+      prev.map((t) => {
+        const id = t._id || t.id;
+        if (taskIds.includes(id)) {
+          return {
+            ...t,
+            status,
+            progress: status === 'completed' ? 100 : status === 'pending' ? 0 : t.progress,
+          };
+        }
+        return t;
+      })
+    );
+
+    try {
+      const response = await api.patch('/tasks/bulk/status', { taskIds, status });
+      fetchStats();
+      return { success: true, count: response.data?.modifiedCount };
+    } catch (err) {
+      setTasks(previousTasks);
+      const message = err.response?.data?.message || 'Failed to update selected tasks';
+      return { success: false, error: message };
+    }
+  };
+
+  // Bulk delete multiple tasks
+  const bulkDeleteTasks = async (taskIds) => {
+    if (!Array.isArray(taskIds) || taskIds.length === 0) return { success: false };
+    const previousTasks = [...tasks];
+
+    // Optimistically delete
+    setTasks((prev) => prev.filter((t) => !taskIds.includes(t._id || t.id)));
+
+    try {
+      const response = await api.delete('/tasks/bulk', { data: { taskIds } });
+      fetchStats();
+      return { success: true, count: response.data?.deletedCount };
+    } catch (err) {
+      setTasks(previousTasks);
+      const message = err.response?.data?.message || 'Failed to delete selected tasks';
+      return { success: false, error: message };
+    }
+  };
+
   const resetFilters = () => {
     setFilters(initialFilters);
   };
@@ -402,6 +452,8 @@ export const TaskProvider = ({ children }) => {
     deleteTask,
     deleteAttachment,
     toggleSubtask,
+    bulkUpdateStatus,
+    bulkDeleteTasks,
   };
 
   return <TaskContext.Provider value={value}>{children}</TaskContext.Provider>;

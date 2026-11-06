@@ -519,6 +519,97 @@ const deleteSubtask = async (req, res, next) => {
   }
 };
 
+// @desc    Bulk update status for multiple tasks
+// @route   PATCH /api/tasks/bulk/status
+// @access  Private
+const bulkUpdateStatus = async (req, res, next) => {
+  try {
+    const { taskIds, status } = req.body;
+
+    if (!Array.isArray(taskIds) || taskIds.length === 0) {
+      return res.status(400).json({ message: 'taskIds array is required and cannot be empty' });
+    }
+
+    if (!['pending', 'in-progress', 'completed'].includes(status)) {
+      return res.status(400).json({ message: 'Valid status is required' });
+    }
+
+    const updateFields = { status };
+    if (status === 'completed') {
+      updateFields.progress = 100;
+    } else if (status === 'pending') {
+      updateFields.progress = 0;
+    }
+
+    const result = await Task.updateMany(
+      {
+        _id: { $in: taskIds },
+        user: req.user._id,
+      },
+      {
+        $set: updateFields,
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `Updated status for ${result.modifiedCount} tasks`,
+      modifiedCount: result.modifiedCount,
+      status,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Bulk delete multiple tasks and their attachments
+// @route   DELETE /api/tasks/bulk
+// @access  Private
+const bulkDeleteTasks = async (req, res, next) => {
+  try {
+    const { taskIds } = req.body;
+
+    if (!Array.isArray(taskIds) || taskIds.length === 0) {
+      return res.status(400).json({ message: 'taskIds array is required and cannot be empty' });
+    }
+
+    // Find all matching tasks first to clean up attachments
+    const tasksToDelete = await Task.find({
+      _id: { $in: taskIds },
+      user: req.user._id,
+    });
+
+    if (tasksToDelete.length === 0) {
+      return res.status(404).json({ message: 'No tasks found matching provided IDs' });
+    }
+
+    for (const task of tasksToDelete) {
+      if (task.attachments && task.attachments.length > 0) {
+        for (const attachment of task.attachments) {
+          try {
+            await deleteAttachmentFile(attachment);
+          } catch (fileErr) {
+            console.error(`Failed to delete attachment ${attachment.filename}:`, fileErr);
+          }
+        }
+      }
+    }
+
+    const result = await Task.deleteMany({
+      _id: { $in: taskIds },
+      user: req.user._id,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully deleted ${result.deletedCount} tasks`,
+      deletedCount: result.deletedCount,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getTasks,
   getStats,
@@ -531,5 +622,7 @@ module.exports = {
   toggleSubtask,
   addSubtask,
   deleteSubtask,
+  bulkUpdateStatus,
+  bulkDeleteTasks,
 };
 

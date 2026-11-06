@@ -128,9 +128,41 @@ const getStats = async (req, res, next) => {
 // @access  Private
 const createTask = async (req, res, next) => {
   try {
-    const { title, description, status, priority, startDate, dueDate, order } = req.body;
+    const { title, description, status, priority, startDate, dueDate, order, progress, subtasks } = req.body;
 
     const taskStatus = status || 'pending';
+
+    // Parse subtasks safely
+    let parsedSubtasks = [];
+    if (typeof subtasks === 'string') {
+      try {
+        const parsed = JSON.parse(subtasks);
+        if (Array.isArray(parsed)) parsedSubtasks = parsed;
+      } catch {
+        parsedSubtasks = [];
+      }
+    } else if (Array.isArray(subtasks)) {
+      parsedSubtasks = subtasks;
+    }
+
+    const cleanSubtasks = parsedSubtasks
+      .filter((s) => s && (typeof s.title === 'string' || typeof s === 'string'))
+      .map((s) => ({
+        title: typeof s === 'string' ? s.trim() : s.title.trim(),
+        completed: Boolean(s.completed),
+      }))
+      .filter((s) => s.title.length > 0);
+
+    // Calculate progress
+    let taskProgress = Number(progress);
+    if (isNaN(taskProgress) || taskProgress < 0 || taskProgress > 100) {
+      if (cleanSubtasks.length > 0) {
+        const completedCount = cleanSubtasks.filter((s) => s.completed).length;
+        taskProgress = Math.round((completedCount / cleanSubtasks.length) * 100);
+      } else {
+        taskProgress = taskStatus === 'completed' ? 100 : (taskStatus === 'in-progress' ? 50 : 0);
+      }
+    }
 
     // Calculate order if not provided
     let taskOrder = Number(order);
@@ -154,6 +186,8 @@ const createTask = async (req, res, next) => {
       startDate: startDate && String(startDate).trim() !== '' ? new Date(startDate) : null,
       dueDate: dueDate && String(dueDate).trim() !== '' ? new Date(dueDate) : null,
       order: taskOrder,
+      progress: taskProgress,
+      subtasks: cleanSubtasks,
       attachments,
     });
 
@@ -203,7 +237,7 @@ const updateTask = async (req, res, next) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    const { title, description, status, priority, startDate, dueDate, order } = req.body;
+    const { title, description, status, priority, startDate, dueDate, order, progress, subtasks } = req.body;
 
     if (title !== undefined) task.title = title.trim();
     if (description !== undefined) task.description = description.trim();
@@ -216,6 +250,39 @@ const updateTask = async (req, res, next) => {
       task.dueDate = dueDate && String(dueDate).trim() !== '' ? new Date(dueDate) : null;
     }
     if (order !== undefined) task.order = Number(order);
+
+    if (subtasks !== undefined) {
+      let parsedSubtasks = [];
+      if (typeof subtasks === 'string') {
+        try {
+          const parsed = JSON.parse(subtasks);
+          if (Array.isArray(parsed)) parsedSubtasks = parsed;
+        } catch {
+          parsedSubtasks = [];
+        }
+      } else if (Array.isArray(subtasks)) {
+        parsedSubtasks = subtasks;
+      }
+
+      task.subtasks = parsedSubtasks
+        .filter((s) => s && (typeof s.title === 'string' || typeof s === 'string'))
+        .map((s) => {
+          const item = {
+            title: typeof s === 'string' ? s.trim() : s.title.trim(),
+            completed: Boolean(s.completed),
+          };
+          if (s._id || s.id) item._id = s._id || s.id;
+          return item;
+        })
+        .filter((s) => s.title.length > 0);
+    }
+
+    if (progress !== undefined && !isNaN(Number(progress))) {
+      task.progress = Math.min(100, Math.max(0, Number(progress)));
+    } else if (subtasks !== undefined && task.subtasks.length > 0) {
+      const completedCount = task.subtasks.filter((s) => s.completed).length;
+      task.progress = Math.round((completedCount / task.subtasks.length) * 100);
+    }
 
     // Process new attachments
     if (req.files && req.files.length > 0) {
@@ -335,6 +402,123 @@ const deleteAttachment = async (req, res, next) => {
   }
 };
 
+// @desc    Toggle single subtask completion
+// @route   PATCH /api/tasks/:id/subtasks/:subtaskId/toggle
+// @access  Private
+const toggleSubtask = async (req, res, next) => {
+  try {
+    const task = await Task.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    const subtask = task.subtasks.id(req.params.subtaskId);
+    if (!subtask) {
+      return res.status(404).json({ message: 'Subtask not found' });
+    }
+
+    subtask.completed = !subtask.completed;
+
+    // Recalculate progress based on subtasks
+    if (task.subtasks.length > 0) {
+      const completedCount = task.subtasks.filter((s) => s.completed).length;
+      task.progress = Math.round((completedCount / task.subtasks.length) * 100);
+      if (completedCount === task.subtasks.length && task.status !== 'completed') {
+        task.status = 'completed';
+      } else if (completedCount < task.subtasks.length && task.status === 'completed') {
+        task.status = 'in-progress';
+      }
+    }
+
+    await task.save();
+
+    res.status(200).json({
+      success: true,
+      task,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Add single subtask
+// @route   POST /api/tasks/:id/subtasks
+// @access  Private
+const addSubtask = async (req, res, next) => {
+  try {
+    const { title } = req.body;
+    if (!title || !title.trim()) {
+      return res.status(400).json({ message: 'Subtask title is required' });
+    }
+
+    const task = await Task.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    task.subtasks.push({
+      title: title.trim(),
+      completed: false,
+    });
+
+    if (task.subtasks.length > 0) {
+      const completedCount = task.subtasks.filter((s) => s.completed).length;
+      task.progress = Math.round((completedCount / task.subtasks.length) * 100);
+    }
+
+    await task.save();
+
+    res.status(201).json({
+      success: true,
+      task,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Delete single subtask
+// @route   DELETE /api/tasks/:id/subtasks/:subtaskId
+// @access  Private
+const deleteSubtask = async (req, res, next) => {
+  try {
+    const task = await Task.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    task.subtasks.pull({ _id: req.params.subtaskId });
+
+    if (task.subtasks.length > 0) {
+      const completedCount = task.subtasks.filter((s) => s.completed).length;
+      task.progress = Math.round((completedCount / task.subtasks.length) * 100);
+    } else {
+      task.progress = task.status === 'completed' ? 100 : (task.status === 'in-progress' ? 50 : 0);
+    }
+
+    await task.save();
+
+    res.status(200).json({
+      success: true,
+      task,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getTasks,
   getStats,
@@ -344,5 +528,8 @@ module.exports = {
   updateTaskStatus,
   deleteTask,
   deleteAttachment,
+  toggleSubtask,
+  addSubtask,
+  deleteSubtask,
 };
 

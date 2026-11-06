@@ -11,6 +11,22 @@ const attachmentSchema = new mongoose.Schema(
   { _id: true }
 );
 
+const subtaskSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: [true, 'Subtask title is required'],
+      trim: true,
+      maxlength: [200, 'Subtask title cannot exceed 200 characters'],
+    },
+    completed: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { _id: true, timestamps: true }
+);
+
 const taskSchema = new mongoose.Schema(
   {
     user: {
@@ -52,6 +68,13 @@ const taskSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    progress: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0,
+    },
+    subtasks: [subtaskSchema],
     attachments: [attachmentSchema],
   },
   {
@@ -66,6 +89,20 @@ taskSchema.index({ user: 1, priority: 1 });
 taskSchema.index({ title: 'text', description: 'text' });
 
 attachmentSchema.set('toJSON', {
+  transform: (doc, ret) => {
+    ret.id = ret._id;
+    return ret;
+  },
+});
+
+subtaskSchema.set('toJSON', {
+  transform: (doc, ret) => {
+    ret.id = ret._id;
+    return ret;
+  },
+});
+
+subtaskSchema.set('toObject', {
   transform: (doc, ret) => {
     ret.id = ret._id;
     return ret;

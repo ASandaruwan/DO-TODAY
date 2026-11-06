@@ -10,6 +10,9 @@ import {
   ExternalLink,
   Eye,
   Download,
+  CheckSquare,
+  Plus,
+  Check,
 } from 'lucide-react';
 import { useTasks } from '../../context/TaskContext';
 import { useToast } from '../../context/ToastContext';
@@ -43,6 +46,9 @@ export default function TaskModal() {
   const [priority, setPriority] = useState('medium');
   const [startDate, setStartDate] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [subtasks, setSubtasks] = useState([]);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+  const [progress, setProgress] = useState(0);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [existingAttachments, setExistingAttachments] = useState([]);
   const [previewAttachment, setPreviewAttachment] = useState(null);
@@ -56,6 +62,7 @@ export default function TaskModal() {
     if (isNewTaskModalOpen) {
       setFormError('');
       setSelectedFiles([]);
+      setNewSubtaskTitle('');
       if (editingTask) {
         setTitle(editingTask.title || '');
         setDescription(editingTask.description || '');
@@ -68,6 +75,16 @@ export default function TaskModal() {
           editingTask.dueDate ? editingTask.dueDate.substring(0, 10) : ''
         );
         setExistingAttachments(editingTask.attachments || []);
+        setSubtasks(
+          Array.isArray(editingTask.subtasks)
+            ? editingTask.subtasks.map((s) => ({
+                _id: s._id || s.id,
+                title: s.title || '',
+                completed: Boolean(s.completed),
+              }))
+            : []
+        );
+        setProgress(typeof editingTask.progress === 'number' ? editingTask.progress : 0);
       } else {
         setTitle('');
         setDescription('');
@@ -76,6 +93,8 @@ export default function TaskModal() {
         setStartDate(modalPrefilledDate || '');
         setDueDate(modalPrefilledDate || '');
         setExistingAttachments([]);
+        setSubtasks([]);
+        setProgress(0);
       }
     }
   }, [isNewTaskModalOpen, editingTask, modalPrefilledDate]);
@@ -149,6 +168,48 @@ export default function TaskModal() {
     }
   };
 
+  const handleAddSubtask = (e) => {
+    if (e) e.preventDefault();
+    const trimmed = newSubtaskTitle.trim();
+    if (!trimmed) return;
+    const updated = [
+      ...subtasks,
+      {
+        _id: 'temp-' + Date.now(),
+        title: trimmed,
+        completed: false,
+      },
+    ];
+    setSubtasks(updated);
+    setNewSubtaskTitle('');
+    const done = updated.filter((s) => s.completed).length;
+    setProgress(Math.round((done / updated.length) * 100));
+  };
+
+  const handleToggleSubtask = (index) => {
+    const updated = subtasks.map((s, idx) =>
+      idx === index ? { ...s, completed: !s.completed } : s
+    );
+    setSubtasks(updated);
+    const done = updated.filter((s) => s.completed).length;
+    const newProg = Math.round((done / updated.length) * 100);
+    setProgress(newProg);
+    if (newProg === 100 && status !== 'completed') {
+      setStatus('completed');
+    } else if (newProg < 100 && status === 'completed') {
+      setStatus('in-progress');
+    }
+  };
+
+  const handleRemoveSubtask = (index) => {
+    const updated = subtasks.filter((_, idx) => idx !== index);
+    setSubtasks(updated);
+    if (updated.length > 0) {
+      const done = updated.filter((s) => s.completed).length;
+      setProgress(Math.round((done / updated.length) * 100));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim()) {
@@ -169,6 +230,8 @@ export default function TaskModal() {
       formData.append('priority', priority);
       formData.append('startDate', startDate || '');
       formData.append('dueDate', dueDate || '');
+      formData.append('progress', progress);
+      formData.append('subtasks', JSON.stringify(subtasks));
 
       selectedFiles.forEach((file) => {
         formData.append('attachments', file);
@@ -182,6 +245,8 @@ export default function TaskModal() {
         priority,
         startDate: startDate || null,
         dueDate: dueDate || null,
+        progress,
+        subtasks,
       };
     }
 
@@ -263,6 +328,107 @@ export default function TaskModal() {
               placeholder="Add details, notes or links..."
               className="w-full p-3 bg-surface-light dark:bg-[#13151F] border border-border-light dark:border-border-dark rounded-xl text-content-strong dark:text-white placeholder:text-content-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm resize-none"
             />
+          </div>
+
+          {/* Subtasks / Checklist Section */}
+          <div className="bg-[#FAF9F5] dark:bg-[#151822] p-4 rounded-xl border border-border-light dark:border-border-dark space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckSquare className="w-4 h-4 text-primary" />
+                <label className="text-sm font-semibold text-content-strong dark:text-gray-200">
+                  Subtasks / Checklist
+                </label>
+                {subtasks.length > 0 && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                    {subtasks.filter((s) => s.completed).length} / {subtasks.length}
+                  </span>
+                )}
+              </div>
+              <span className="text-xs font-semibold text-content-muted dark:text-gray-400">
+                {progress}%
+              </span>
+            </div>
+
+            {/* Progress bar */}
+            {subtasks.length > 0 && (
+              <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                <div
+                  className="bg-primary h-full transition-all duration-300"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            )}
+
+            {/* Existing Subtask Items */}
+            {subtasks.length > 0 && (
+              <div className="space-y-2 pt-1 max-h-40 overflow-y-auto">
+                {subtasks.map((st, idx) => (
+                  <div
+                    key={st._id || idx}
+                    className="flex items-center justify-between gap-2 p-2 rounded-lg bg-white dark:bg-[#1A1D27] border border-border-light dark:border-border-dark text-xs group"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSubtask(idx)}
+                      className="flex items-center gap-2.5 flex-1 min-w-0 text-left focus:outline-none"
+                    >
+                      <div
+                        className={`w-4 h-4 rounded-md border flex items-center justify-center transition-colors flex-shrink-0 ${
+                          st.completed
+                            ? 'bg-emerald-600 border-emerald-600 text-white'
+                            : 'border-border-light dark:border-border-dark bg-surface-light dark:bg-[#13151F] hover:border-primary'
+                        }`}
+                      >
+                        {st.completed && <Check className="w-3 h-3 stroke-[3]" />}
+                      </div>
+                      <span
+                        className={`truncate font-medium ${
+                          st.completed
+                            ? 'line-through text-content-muted dark:text-gray-500'
+                            : 'text-content-strong dark:text-white'
+                        }`}
+                      >
+                        {st.title}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSubtask(idx)}
+                      className="opacity-0 group-hover:opacity-100 text-content-muted hover:text-red-600 p-1 rounded transition-opacity"
+                      title="Delete subtask"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add Subtask Input Form */}
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="text"
+                value={newSubtaskTitle}
+                onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddSubtask();
+                  }
+                }}
+                placeholder="Add a checklist item (press Enter)..."
+                className="flex-1 h-9 px-3 bg-white dark:bg-[#1A1D27] border border-border-light dark:border-border-dark rounded-lg text-content-strong dark:text-white placeholder:text-content-muted text-xs focus:outline-none focus:border-primary"
+              />
+              <button
+                type="button"
+                onClick={handleAddSubtask}
+                disabled={!newSubtaskTitle.trim()}
+                className="h-9 px-3 bg-primary hover:bg-primary-dark text-white rounded-lg text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add</span>
+              </button>
+            </div>
           </div>
 
           {/* Status & Priority */}

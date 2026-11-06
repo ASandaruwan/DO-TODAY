@@ -9,6 +9,9 @@ const {
   updateTaskStatus,
   deleteTask,
   deleteAttachment,
+  toggleSubtask,
+  addSubtask,
+  deleteSubtask,
 } = require('../controllers/task.controller');
 const { protect } = require('../middleware/auth');
 const { upload } = require('../middleware/upload');
@@ -57,6 +60,22 @@ router.patch('/:id/status', updateTaskStatus);
 
 router.delete('/:id', deleteTask);
 router.delete('/:id/attachments/:attachmentId', deleteAttachment);
+
+// Subtask management routes
+router.patch('/:id/subtasks/:subtaskId/toggle', toggleSubtask);
+router.post(
+  '/:id/subtasks',
+  validate([
+    body('title')
+      .trim()
+      .notEmpty()
+      .withMessage('Subtask title is required')
+      .isLength({ max: 200 })
+      .withMessage('Subtask title cannot exceed 200 characters'),
+  ]),
+  addSubtask
+);
+router.delete('/:id/subtasks/:subtaskId', deleteSubtask);
 
 module.exports = router;
 

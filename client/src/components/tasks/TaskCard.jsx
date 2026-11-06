@@ -11,6 +11,8 @@ import {
   Download,
   FileText,
   Image as ImageIcon,
+  CheckSquare,
+  Check,
 } from 'lucide-react';
 import { useTasks } from '../../context/TaskContext';
 import { useToast } from '../../context/ToastContext';
@@ -30,28 +32,33 @@ export default function TaskCard({
   dragHandleProps,
   className = '',
 }) {
-  const { openEditTaskModal, deleteTask, updateTaskStatus } = useTasks();
+  const { openEditTaskModal, deleteTask, updateTaskStatus, toggleSubtask } = useTasks();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [showAttachmentsMenu, setShowAttachmentsMenu] = useState(false);
+  const [showSubtasksMenu, setShowSubtasksMenu] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const attachmentsRef = useRef(null);
+  const subtasksRef = useRef(null);
 
   const taskId = task?._id || task?.id;
   const isCompleted = task?.status === 'completed';
 
-  // Close attachments menu when clicking outside
+  // Close menus when clicking outside
   useEffect(() => {
-    if (!showAttachmentsMenu) return;
+    if (!showAttachmentsMenu && !showSubtasksMenu) return;
     const handleClickOutside = (e) => {
       if (attachmentsRef.current && !attachmentsRef.current.contains(e.target)) {
         setShowAttachmentsMenu(false);
       }
+      if (subtasksRef.current && !subtasksRef.current.contains(e.target)) {
+        setShowSubtasksMenu(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showAttachmentsMenu]);
+  }, [showAttachmentsMenu, showSubtasksMenu]);
 
   const handleToggleComplete = async (e) => {
     e.stopPropagation();
@@ -234,6 +241,70 @@ export default function TaskCard({
               </span>
             )}
 
+            {/* Subtasks Interactive Pill */}
+            {task.subtasks && task.subtasks.length > 0 && (
+              <div className="relative" ref={subtasksRef}>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowSubtasksMenu((prev) => !prev);
+                  }}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40 font-medium transition-colors cursor-pointer"
+                  title="Click to view & toggle subtasks"
+                >
+                  <CheckSquare className="w-3.5 h-3.5" />
+                  <span>
+                    {task.subtasks.filter((s) => s.completed).length}/{task.subtasks.length}
+                  </span>
+                </button>
+
+                {/* Subtasks Popover Dropdown */}
+                {showSubtasksMenu && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute left-0 bottom-full mb-2 w-64 bg-white dark:bg-[#1A1D27] rounded-xl shadow-xl border border-border-light dark:border-border-dark p-2.5 z-30 animate-in fade-in"
+                  >
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-content-muted uppercase tracking-wider mb-2 px-1">
+                      <span>Checklist</span>
+                      <span>
+                        {task.subtasks.filter((s) => s.completed).length}/{task.subtasks.length}
+                      </span>
+                    </div>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {task.subtasks.map((st, idx) => (
+                        <button
+                          key={st._id || st.id || idx}
+                          type="button"
+                          onClick={() => toggleSubtask(taskId, st._id || st.id)}
+                          className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-xs text-left transition-colors"
+                        >
+                          <div
+                            className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${
+                              st.completed
+                                ? 'bg-emerald-600 border-emerald-600 text-white'
+                                : 'border-border-light dark:border-border-dark bg-white dark:bg-[#13151F]'
+                            }`}
+                          >
+                            {st.completed && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                          </div>
+                          <span
+                            className={`truncate ${
+                              st.completed
+                                ? 'line-through text-content-muted dark:text-gray-500'
+                                : 'text-content-strong dark:text-white'
+                            }`}
+                          >
+                            {st.title}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Attachments Interactive Button */}
             {attachments.length > 0 && (
               <div className="relative" ref={attachmentsRef}>
@@ -315,6 +386,22 @@ export default function TaskCard({
               </div>
             )}
           </div>
+
+          {/* Subtask Progress Bar */}
+          {((typeof task.progress === 'number' && task.progress > 0) || (task.subtasks && task.subtasks.length > 0)) && (
+            <div className="mt-3.5 pt-2 border-t border-border-light/60 dark:border-border-dark/60">
+              <div className="flex items-center justify-between text-[11px] text-content-muted dark:text-gray-400 font-medium mb-1">
+                <span>Progress</span>
+                <span>{task.progress || 0}%</span>
+              </div>
+              <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                <div
+                  className="bg-primary h-full transition-all duration-300 rounded-full"
+                  style={{ width: `${task.progress || 0}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

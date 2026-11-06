@@ -25,11 +25,20 @@ const normalizeTask = (t) => {
         id: a.id || a._id,
       }))
     : [];
+  const subtasks = Array.isArray(t.subtasks)
+    ? t.subtasks.map((s) => ({
+        ...s,
+        _id: s._id || s.id,
+        id: s.id || s._id,
+      }))
+    : [];
   return {
     ...t,
     _id: id,
     id: id,
     attachments,
+    subtasks,
+    progress: typeof t.progress === 'number' ? t.progress : 0,
   };
 };
 
@@ -323,6 +332,47 @@ export const TaskProvider = ({ children }) => {
     }
   };
 
+  // Toggle Subtask
+  const toggleSubtask = async (taskId, subtaskId) => {
+    if (!taskId || !subtaskId) return { success: false };
+    const previousTasks = [...tasks];
+
+    // Optimistically toggle subtask and recalculate progress
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t._id === taskId || t.id === taskId) {
+          const updatedSubtasks = (t.subtasks || []).map((s) =>
+            s._id === subtaskId || s.id === subtaskId
+              ? { ...s, completed: !s.completed }
+              : s
+          );
+          const done = updatedSubtasks.filter((s) => s.completed).length;
+          const newProgress = Math.round((done / updatedSubtasks.length) * 100);
+          return {
+            ...t,
+            subtasks: updatedSubtasks,
+            progress: newProgress,
+          };
+        }
+        return t;
+      })
+    );
+
+    try {
+      const response = await api.patch(`/tasks/${taskId}/subtasks/${subtaskId}/toggle`);
+      const updatedTask = normalizeTask(response.data?.task || response.data);
+      setTasks((prev) =>
+        prev.map((t) => (t._id === taskId || t.id === taskId ? updatedTask : t))
+      );
+      fetchStats();
+      return { success: true, task: updatedTask };
+    } catch (err) {
+      setTasks(previousTasks);
+      const message = err.response?.data?.message || 'Failed to toggle subtask';
+      return { success: false, error: message };
+    }
+  };
+
   const resetFilters = () => {
     setFilters(initialFilters);
   };
@@ -351,6 +401,7 @@ export const TaskProvider = ({ children }) => {
     moveTask,
     deleteTask,
     deleteAttachment,
+    toggleSubtask,
   };
 
   return <TaskContext.Provider value={value}>{children}</TaskContext.Provider>;

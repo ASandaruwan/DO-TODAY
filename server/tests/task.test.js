@@ -229,6 +229,54 @@ test('Task API: CRUD, stats, filters, isolation & export', async () => {
   assert.equal(removeAttRes.status, 200);
   assert.equal(removeAttRes.body.task.attachments.length, 0);
 
+  // Subtasks management: create with subtasks, toggle, add, delete
+  const subtaskTaskRes = await request(app)
+    .post('/api/tasks')
+    .set('Authorization', `Bearer ${userAToken}`)
+    .send({
+      title: 'Task with subtasks',
+      status: 'pending',
+      subtasks: [
+        { title: 'Subtask 1', completed: false },
+        { title: 'Subtask 2', completed: true },
+      ],
+    });
+  assert.equal(subtaskTaskRes.status, 201);
+  assert.equal(subtaskTaskRes.body.task.subtasks.length, 2);
+  assert.equal(subtaskTaskRes.body.task.progress, 50);
+
+  const subtaskId = subtaskTaskRes.body.task.subtasks[0]._id;
+
+  // Toggle subtask 1 to completed
+  const toggleRes = await request(app)
+    .patch(`/api/tasks/${subtaskTaskRes.body.task._id}/subtasks/${subtaskId}/toggle`)
+    .set('Authorization', `Bearer ${userAToken}`);
+  assert.equal(toggleRes.status, 200);
+  assert.equal(toggleRes.body.task.subtasks[0].completed, true);
+  assert.equal(toggleRes.body.task.progress, 100);
+
+  // Add a 3rd subtask
+  const addSubRes = await request(app)
+    .post(`/api/tasks/${subtaskTaskRes.body.task._id}/subtasks`)
+    .set('Authorization', `Bearer ${userAToken}`)
+    .send({ title: 'Subtask 3' });
+  assert.equal(addSubRes.status, 201);
+  assert.equal(addSubRes.body.task.subtasks.length, 3);
+  assert.equal(addSubRes.body.task.progress, 67);
+
+  // Delete subtask 3
+  const newSubId = addSubRes.body.task.subtasks[2]._id;
+  const delSubRes = await request(app)
+    .delete(`/api/tasks/${subtaskTaskRes.body.task._id}/subtasks/${newSubId}`)
+    .set('Authorization', `Bearer ${userAToken}`);
+  assert.equal(delSubRes.status, 200);
+  assert.equal(delSubRes.body.task.subtasks.length, 2);
+
+  // Clean up subtask test task
+  await request(app)
+    .delete(`/api/tasks/${subtaskTaskRes.body.task._id}`)
+    .set('Authorization', `Bearer ${userAToken}`);
+
   // Clean up task
   await request(app)
     .delete(`/api/tasks/${uploadRes.body.task._id}`)

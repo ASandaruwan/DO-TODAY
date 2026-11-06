@@ -17,6 +17,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useTasks } from '../../context/TaskContext';
+import NotificationDropdown from './NotificationDropdown';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -140,6 +141,9 @@ export default function Navbar() {
               <Plus className="w-5 h-5 stroke-[2.5]" />
               <span>New Task</span>
             </button>
+
+            {/* Approaching Deadlines Notification Bell */}
+            <NotificationDropdown />
 
             {/* Theme Toggle Button */}
             <button

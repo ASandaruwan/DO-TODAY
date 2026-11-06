@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
 import { TaskProvider } from './context/TaskContext';
+import { NotificationProvider } from './context/NotificationContext';
 
 // Layout & Routing
 import ProtectedRoute from './components/layout/ProtectedRoute';
@@ -24,33 +25,35 @@ export default function App() {
       <AuthProvider>
         <ToastProvider>
           <TaskProvider>
-            <BrowserRouter>
-              <Routes>
-                {/* Public Auth Routes */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
+            <NotificationProvider>
+              <BrowserRouter>
+                <Routes>
+                  {/* Public Auth Routes */}
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
 
-                {/* Protected App Routes */}
-                <Route
-                  path="/"
-                  element={
-                    <ProtectedRoute>
-                      <PageShell />
-                    </ProtectedRoute>
-                  }
-                >
-                  <Route index element={<Home />} />
-                  <Route path="dashboard" element={<Dashboard />} />
-                  <Route path="profile" element={<Profile />} />
-                  <Route path="settings" element={<Settings />} />
-                  <Route path="about" element={<About />} />
-                </Route>
+                  {/* Protected App Routes */}
+                  <Route
+                    path="/"
+                    element={
+                      <ProtectedRoute>
+                        <PageShell />
+                      </ProtectedRoute>
+                    }
+                  >
+                    <Route index element={<Home />} />
+                    <Route path="dashboard" element={<Dashboard />} />
+                    <Route path="profile" element={<Profile />} />
+                    <Route path="settings" element={<Settings />} />
+                    <Route path="about" element={<About />} />
+                  </Route>
 
-                {/* Catch all fallback */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </BrowserRouter>
+                  {/* Catch all fallback */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </BrowserRouter>
+            </NotificationProvider>
           </TaskProvider>
         </ToastProvider>
       </AuthProvider>

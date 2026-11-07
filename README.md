@@ -62,12 +62,25 @@ The user interface matches the reference design specifications from `docs/screen
 ## ✨ Key Features
 
 ### 1. Multi-View Task Dashboard (`/dashboard`)
-- **Drag-and-Drop Kanban Board**: Move tasks seamlessly across **Pending**, **In Progress**, and **Completed** columns powered by `@hello-pangea/dnd`. Supports instantaneous optimistic UI updates with automatic rollback and toast notifications on failure.
-- **Sortable List View**: Clean, compact tabular layout with inline status check toggles, priority badges, formatted due dates, attachment counts, and multi-column sorting (Task, Priority, Status, Due Date).
+- **Drag-and-Drop Kanban Board**: Move tasks seamlessly across **Pending**, **In Progress**, and **Completed** columns powered by `@hello-pangea/dnd`. Supports in-column manual drag-and-drop reordering with sequential database re-indexing, instantaneous optimistic UI updates, and automatic rollback on failure.
+- **Sortable List View with Bulk Actions**: Clean tabular layout with multi-selection checkboxes, column header select-all, floating glassmorphism bulk action bar for mass status updates and bulk deletions, inline status toggles, priority badges, and multi-column sorting.
 - **Gantt-Style Timeline View**: Visual horizontal scheduling grid spanning `startDate` to `dueDate` with a live "Today" marker, month navigation, status-colored duration bars, and days-in-progress counters.
 - **Debounced Filters Bar**: 5-field responsive filter card (300ms debounced search on title/description, Status dropdown, Priority dropdown, From date, and To date) applying synchronously across all three views.
 
-### 2. Home & Daily Agenda Hub (`/`)
+### 2. Subtasks & Checklist Engine
+- **Hierarchical Task Checklists**: Add, edit, check off, and remove subtasks inside any task modal or directly from Kanban cards via an interactive popover checklist.
+- **Progress Synchronization**: Automatic completion percentage tracking (`progress = completed / total * 100`) with visual progress bars rendered across cards, list items, and modals.
+
+### 3. Recurring Tasks Engine
+- **Automated Next-Iteration Spawning**: Configure tasks to repeat **Daily**, **Weekly**, or **Monthly**.
+- **Preserved History & Fresh Resets**: When a recurring task is completed, it remains marked as `completed` for historical logs while an active fresh iteration is spawned for the next scheduled interval with `status: pending`, `progress: 0`, and subtasks reset.
+
+### 4. Approaching Deadline Reminders & Browser Push Notifications
+- **Real-Time Notification Center**: Bell icon in the navigation bar with unread badge counters and a categorized dropdown highlighting **Overdue**, **Due Today**, and **Approaching** (within 48 hours) tasks.
+- **HTML5 Desktop Push Alerts**: Native OS notifications (`window.Notification`) dispatching background alerts for critical deadlines.
+- **Customizable Alert Rules**: Granular notification toggles and a "Send Test Alert" tool in Settings.
+
+### 5. Home & Daily Agenda Hub (`/`)
 - **Time-Aware Greeting**: Dynamic greeting (`Good Morning` 05:00–11:59, `Good Afternoon` 12:00–16:59, `Good Evening` 17:00–04:59) rendered with a crimson-to-amber text gradient (`#E23E52` → `#F4A94E`).
 - **Date Pill Chip**: Formatted current date chip (`Monday, Sep 14, 2026`) with a red clock icon.
 - **Three User-Scoped Stat Cards**: Real-time counters with colored left accent borders:
@@ -432,12 +445,18 @@ All protected endpoints require an `Authorization: Bearer <token>` header.
 |---|---|:---:|---|
 | `GET` | `/api/tasks` | 🔒 Private | List tasks with optional query filters (`q, status, priority, from, to, date, sort`) |
 | `GET` | `/api/tasks/stats` | 🔒 Private | Retrieve aggregate counts (`active, pendingInProgress, completed`) |
-| `POST` | `/api/tasks` | 🔒 Private | Create new task (supports multipart `attachments`) |
+| `POST` | `/api/tasks` | 🔒 Private | Create new task (supports recurrence, subtasks & multipart attachments) |
+| `PATCH` | `/api/tasks/bulk/status` | 🔒 Private | Mass status update for selected tasks (`taskIds, status`) |
+| `DELETE` | `/api/tasks/bulk` | 🔒 Private | Mass delete selected tasks and clean up their attachments |
+| `PATCH` | `/api/tasks/reorder` | 🔒 Private | Reorder task IDs sequentially in column (`status, taskIds`) |
 | `GET` | `/api/tasks/:id` | 🔒 Private | Retrieve single task by ID (user-scoped) |
-| `PUT` | `/api/tasks/:id` | 🔒 Private | Update task details and add new attachments |
+| `PUT` | `/api/tasks/:id` | 🔒 Private | Update task details, recurrence, progress, and attachments |
 | `PATCH` | `/api/tasks/:id/status` | 🔒 Private | Fast status & order patch for Kanban drag-and-drop operations |
 | `DELETE` | `/api/tasks/:id` | 🔒 Private | Delete task and remove its uploaded files |
 | `DELETE` | `/api/tasks/:id/attachments/:attachmentId` | 🔒 Private | Remove a single attachment from a task |
+| `PATCH` | `/api/tasks/:id/subtasks/:subtaskId/toggle` | 🔒 Private | Fast toggle subtask checklist item completion status |
+| `POST` | `/api/tasks/:id/subtasks` | 🔒 Private | Append a new subtask checklist item to a task |
+| `DELETE` | `/api/tasks/:id/subtasks/:subtaskId` | 🔒 Private | Delete a subtask checklist item from a task |
 
 ### Users & Account (`/api/users`)
 
@@ -445,14 +464,15 @@ All protected endpoints require an `Authorization: Bearer <token>` header.
 |---|---|:---:|---|
 | `PATCH` | `/api/users/me` | 🔒 Private | Update display name (`fullName`) and theme preference (`theme`) |
 | `PATCH` | `/api/users/me/password` | 🔒 Private | Change account password (`currentPassword, newPassword`) |
-| `GET` | `/api/users/me/export` | 🔒 Private | Download full JSON backup (`do-today-backup-YYYY-MM-DD.json`) |
 | `DELETE` | `/api/users/me` | 🔒 Private | Permanently delete user account and cascade-delete all personal tasks |
 
 ### System & Health
 
 | Method | Endpoint | Access | Description |
 |---|---|:---:|---|
-| `GET` | `/api/health` | Public | Service health check (`{ "status": "ok", "uptime": ... }`) |
+| `GET` | `/api/health` | Public | Service health & database connectivity probe |
+| `GET` | `/healthz/live` | Public | Container orchestrator liveness check (`{ "status": "alive" }`) |
+| `GET` | `/healthz/ready` | Public | Container orchestrator database readiness check (`{ "status": "ready" }`) |
 
 ---
 

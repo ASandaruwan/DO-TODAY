@@ -32,32 +32,35 @@ const uploadToCloudinary = (fileBuffer, originalname) => {
 const processUploadedFiles = async (files, req) => {
   if (!files || files.length === 0) return [];
 
-  const attachments = [];
-
   if (isCloudinaryConfigured()) {
-    for (const file of files) {
-      const result = await uploadToCloudinary(file.buffer, file.originalname);
-      attachments.push({
-        filename: file.originalname,
-        url: result.secure_url,
-        mimeType: file.mimetype,
-        size: file.size,
-        publicId: result.public_id,
-      });
-    }
-  } else {
-    for (const file of files) {
-      attachments.push({
-        filename: file.originalname,
-        url: `/uploads/${file.filename}`,
-        mimeType: file.mimetype,
-        size: file.size,
-        publicId: file.filename,
-      });
-    }
+    // Parallelize uploads to Cloudinary for minimal latency
+    return Promise.all(
+      files.map(async (file) => {
+        const result = await uploadToCloudinary(file.buffer, file.originalname);
+        return {
+          filename: file.originalname,
+          url: result.secure_url,
+          mimeType: file.mimetype,
+          size: file.size,
+          publicId: result.public_id,
+        };
+      })
+    );
   }
 
-  return attachments;
+  if (process.env.NODE_ENV === 'production') {
+    console.warn(
+      '[STORAGE NOTICE] Local disk fallback used in production. Cloudinary credentials (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET) are strongly recommended for persistent stateless/serverless storage.'
+    );
+  }
+
+  return files.map((file) => ({
+    filename: file.originalname,
+    url: `/uploads/${file.filename}`,
+    mimeType: file.mimetype,
+    size: file.size,
+    publicId: file.filename,
+  }));
 };
 
 const deleteAttachmentFile = async (attachment) => {

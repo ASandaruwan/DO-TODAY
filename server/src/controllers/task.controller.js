@@ -757,16 +757,24 @@ const bulkDeleteTasks = async (req, res, next) => {
       return res.status(404).json({ message: 'No tasks found matching provided IDs' });
     }
 
+    // Collect all attachments to delete concurrently
+    const allAttachments = [];
     for (const task of tasksToDelete) {
-      if (task.attachments && task.attachments.length > 0) {
-        for (const attachment of task.attachments) {
+      if (Array.isArray(task.attachments) && task.attachments.length > 0) {
+        allAttachments.push(...task.attachments);
+      }
+    }
+
+    if (allAttachments.length > 0) {
+      await Promise.allSettled(
+        allAttachments.map(async (attachment) => {
           try {
             await deleteAttachmentFile(attachment);
           } catch (fileErr) {
             console.error(`Failed to delete attachment ${attachment.filename}:`, fileErr);
           }
-        }
-      }
+        })
+      );
     }
 
     const result = await Task.deleteMany({

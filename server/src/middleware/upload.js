@@ -36,7 +36,10 @@ const fileFilter = (req, file, cb) => {
     'image/jpg',
     'image/webp',
   ];
-  if (allowedMimeTypes.includes(file.mimetype)) {
+  const allowedExtensions = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'];
+  const ext = path.extname(file.originalname).toLowerCase();
+
+  if (allowedMimeTypes.includes(file.mimetype) && allowedExtensions.includes(ext)) {
     cb(null, true);
   } else {
     cb(

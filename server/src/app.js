@@ -72,8 +72,17 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Sanitize against NoSQL query injection
 app.use(mongoSanitize());
 
-// Static folder for local uploads fallback
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Static folder for local uploads fallback with strict security headers (Stored XSS mitigation)
+app.use(
+  '/uploads',
+  (req, res, next) => {
+    res.setHeader('Content-Security-Policy', "default-src 'none'");
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    next();
+  },
+  express.static(path.join(__dirname, '../uploads'))
+);
 
 // Health check endpoint (§12)
 app.get('/api/health', (req, res) => {

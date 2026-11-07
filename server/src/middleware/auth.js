@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { getJwtSecret } = require('../config/env');
 
 const protect = async (req, res, next) => {
   let token;
@@ -18,7 +19,7 @@ const protect = async (req, res, next) => {
   try {
     const decoded = jwt.verify(
       token,
-      process.env.JWT_SECRET || 'fallback-secret-for-development-32chars'
+      getJwtSecret()
     );
 
     // Ensure token is an authentication token, not a reset token

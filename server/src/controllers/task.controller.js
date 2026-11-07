@@ -1,6 +1,13 @@
 const Task = require('../models/Task');
 const { processUploadedFiles, deleteAttachmentFile } = require('../utils/storage');
 
+// Helper to escape special characters in user input for safe RegExp queries (ReDoS protection)
+const escapeRegex = (string) => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
+
+const MAX_BULK_SIZE = 100;
+
 // Helper to calculate the next date for recurring tasks
 const calculateNextDate = (baseDate, recurrence) => {
   if (!baseDate) return null;
@@ -58,9 +65,10 @@ const getTasks = async (req, res, next) => {
 
     const filter = { user: req.user._id };
 
-    // Search query (title + description)
+    // Search query (title + description) with ReDoS protection
     if (q && q.trim()) {
-      const searchRegex = new RegExp(q.trim(), 'i');
+      const safeQuery = escapeRegex(q.trim());
+      const searchRegex = new RegExp(safeQuery, 'i');
       filter.$or = [
         { title: searchRegex },
         { description: searchRegex },
@@ -688,8 +696,10 @@ const bulkUpdateStatus = async (req, res, next) => {
   try {
     const { taskIds, status } = req.body;
 
-    if (!Array.isArray(taskIds) || taskIds.length === 0) {
-      return res.status(400).json({ message: 'taskIds array is required and cannot be empty' });
+    if (!Array.isArray(taskIds) || taskIds.length === 0 || taskIds.length > MAX_BULK_SIZE) {
+      return res.status(400).json({
+        message: `taskIds must be an array containing between 1 and ${MAX_BULK_SIZE} items`,
+      });
     }
 
     if (!['pending', 'in-progress', 'completed'].includes(status)) {
@@ -731,8 +741,10 @@ const bulkDeleteTasks = async (req, res, next) => {
   try {
     const { taskIds } = req.body;
 
-    if (!Array.isArray(taskIds) || taskIds.length === 0) {
-      return res.status(400).json({ message: 'taskIds array is required and cannot be empty' });
+    if (!Array.isArray(taskIds) || taskIds.length === 0 || taskIds.length > MAX_BULK_SIZE) {
+      return res.status(400).json({
+        message: `taskIds must be an array containing between 1 and ${MAX_BULK_SIZE} items`,
+      });
     }
 
     // Find all matching tasks first to clean up attachments

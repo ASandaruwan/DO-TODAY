@@ -1,11 +1,12 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { getJwtSecret } = require('../config/env');
 
 const generateToken = (userId) => {
   return jwt.sign(
     { id: userId },
-    process.env.JWT_SECRET || 'fallback-secret-for-development-32chars',
+    getJwtSecret(),
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
 };
@@ -161,7 +162,7 @@ const verifySecurityAnswer = async (req, res, next) => {
     // Issue short-lived 10m token for reset
     const resetToken = jwt.sign(
       { id: user._id, purpose: 'reset' },
-      process.env.JWT_SECRET || 'fallback-secret-for-development-32chars',
+      getJwtSecret(),
       { expiresIn: '10m' }
     );
 
@@ -193,7 +194,7 @@ const resetPassword = async (req, res, next) => {
     try {
       decoded = jwt.verify(
         resetToken,
-        process.env.JWT_SECRET || 'fallback-secret-for-development-32chars'
+        getJwtSecret()
       );
     } catch (err) {
       return res.status(400).json({ message: 'Invalid or expired reset token' });

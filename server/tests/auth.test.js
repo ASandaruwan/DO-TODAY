@@ -27,6 +27,15 @@ test('GET /api/health should return status ok', async () => {
   const res = await request(app).get('/api/health');
   assert.equal(res.status, 200);
   assert.equal(res.body.status, 'ok');
+  assert.equal(res.body.database, 'connected');
+
+  const liveRes = await request(app).get('/healthz/live');
+  assert.equal(liveRes.status, 200);
+  assert.equal(liveRes.body.status, 'alive');
+
+  const readyRes = await request(app).get('/healthz/ready');
+  assert.equal(readyRes.status, 200);
+  assert.equal(readyRes.body.status, 'ready');
 });
 
 test('Auth flow: signup -> login -> me -> forgot password', async () => {

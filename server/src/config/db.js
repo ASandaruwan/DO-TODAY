@@ -10,7 +10,10 @@ const connectDB = async () => {
 
   try {
     const conn = await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 2500,
+      serverSelectionTimeoutMS: 5000,
+      maxPoolSize: 50,
+      minPoolSize: 5,
+      socketTimeoutMS: 45000,
     });
     console.log(`[Database] MongoDB connected to primary server: ${conn.connection.host}`);
   } catch (err) {

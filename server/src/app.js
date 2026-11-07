@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
 const path = require('path');
+const mongoose = require('mongoose');
 
 const authRoutes = require('./routes/auth.routes');
 const taskRoutes = require('./routes/task.routes');
@@ -84,13 +85,30 @@ app.use(
   express.static(path.join(__dirname, '../uploads'))
 );
 
-// Health check endpoint (§12)
+// Health check endpoints (Liveness & Deep DB Readiness)
 app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
+  const isDbReady = mongoose.connection && mongoose.connection.readyState === 1;
+  const status = isDbReady ? 'ok' : 'degraded';
+  const statusCode = isDbReady ? 200 : 503;
+
+  res.status(statusCode).json({
+    status,
+    database: isDbReady ? 'connected' : 'disconnected',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
+    uptime: Math.floor(process.uptime()),
   });
+});
+
+app.get('/healthz/live', (req, res) => {
+  res.status(200).json({ status: 'alive' });
+});
+
+app.get('/healthz/ready', (req, res) => {
+  const isDbReady = mongoose.connection && mongoose.connection.readyState === 1;
+  if (!isDbReady) {
+    return res.status(503).json({ status: 'unready', database: 'disconnected' });
+  }
+  return res.status(200).json({ status: 'ready', database: 'connected' });
 });
 
 // Mount Routes

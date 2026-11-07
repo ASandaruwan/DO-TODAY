@@ -36,6 +36,16 @@ const startServer = async () => {
 
     process.on('SIGINT', () => handleShutdown('SIGINT'));
     process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+
+    process.on('uncaughtException', (err) => {
+      console.error('[CRITICAL] Uncaught Exception:', err.message || err);
+      handleShutdown('uncaughtException');
+    });
+
+    process.on('unhandledRejection', (reason) => {
+      console.error('[CRITICAL] Unhandled Promise Rejection:', reason);
+      handleShutdown('unhandledRejection');
+    });
   } catch (err) {
     console.error(`[Server Start Error]: ${err.message}`);
     process.exit(1);
